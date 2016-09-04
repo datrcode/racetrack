@@ -1,0 +1,8 @@
+from,to,COUNT
+a,b,10
+b,c,20
+c,d,30
+d,e,40
+f,,50
+,g,10
+g,h,25

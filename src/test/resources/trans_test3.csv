@@ -1,0 +1,5 @@
+IPv4CIDR,Space
+192.168.0.0/16,Private
+192.0.0.0/8,LPrivate
+10.0.0.0/8,Private
+127.0.0.0/8,LocalHost

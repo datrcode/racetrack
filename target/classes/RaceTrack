@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+
+JAVA=$(which java)
+HEAP_MAX=4096m
+HEAP_MIN=512m
+CLASSPATH=.:$(echo lib/*.jar | tr ' ' ':')
+
+${JAVA} -cp ${CLASSPATH} -Xmx${HEAP_MAX} -Xms${HEAP_MIN} racetrack.gui.RT
+

@@ -1,0 +1,24 @@
+beg,url,LATENCY
+2012-11-10 12:00:00,http://www.cnn.com,10
+2012-11-10 12:05:00,http://www.cnn.com/politics,10
+2012-11-10 12:10:00,http://www.cnn.com/politics?page=2,8
+2012-11-10 12:15:00,http://www.cnn.com/politics,12
+2012-11-10 12:17:00,http://www.cnn.com/politics/,8
+2012-11-10 12:20:00,http://www.cnn.com/politics/hotstories,8
+2012-11-10 12:25:00,http://www.cnn.com/politics/hotstories?item=1,10
+2012-11-10 12:27:00,http://www.cnn.com/politics/hotstories?item=1&page=2,10
+2012-11-10 12:29:00,http://www.cnn.com/politics/hotstories?item=1&page=3,8
+2012-11-10 12:30:00,http://www.cnn.com/sports,10
+2012-11-10 12:32:00,http://www.cnn.com/sports/football,12
+2012-11-10 12:35:00,http://www.cnn.com/sports/football/today,12
+2012-11-10 12:36:00,http://www.cnn.com/sports/football/today/,15
+2012-11-10 12:40:00,http://www.cnn.com/sports/football/yesterday/,10
+2012-11-10 12:45:00,http://www.cnn.com/sports/football/yesterday/index.html?page=1,12
+2012-11-10 12:50:00,https://www.cnn.com,20
+2012-11-10 13:00:00,https://www.cnn.com/politics,8
+2012-11-10 13:01:00,https://www.cnn.com/politics?page=5,20
+2012-11-10 13:05:00,https://www.cnn.com/politics?page=8,15
+2012-11-10 13:10:00,http://www.abcnews.com,17
+2012-11-10 13:15:00,http://www.cbsnews.com/politics,18
+2012-11-10 13:20:00,http://www.cbsnews.com/politics/index.html,18
+2012-11-10 13:25:00,http://www.cbsnews.com/politics/index.html?article=5&color=red&layout=top,20

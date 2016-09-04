@@ -1,0 +1,170 @@
+//
+// Needed
+//
+
+**\n** Critical List\n**
+** Transforms need to be multivalued // 2013-01-01
+** Entity tags don't seem to work within non-timestamped elements
+** When sorting layout items, take timestamp into account when the records are equal
+** Make multi-tag fields into everything...
+** Transforms may not work for multi-s -- e.g. IPv4|Mx|CIDR/08
+** Need replacement for flowstats overlay in graph... // 2013-03-15
+** Need method to keep labeled graph elements labeled when moving other elements... // 2013-03-15
+** Need to re-examine labels in xy-panel... // 2013-03-15
+** Need to replace CSV parser with library so that it handles excel... // 2013-03-08
+** ... also need to add UI for users to select scalars, timestamps, and tags
+** ... should probably fingerprint the headers once the user selects so that it doesn't need to be done again
+** Need to remember windows, window positions, and component settings // 2013-03-17
+** ... should probably be prioritized by datasource (filename) and then by tablet headers (sorted)
+** ... should recall when application first loads up and data becomes available
+** ... should periodically save to the RT Store both by datassource and by tablet headers (sorted)
+** Need to automatically store and recall entity tags, time markers when SQLList is avilable // 2013-03-17
+** Issue with RTGraph when the count for a link equals zero - the link is not displayed, but set operations cause nullpointer // 2013-03-21
+** ... RTGraphPanel.java, Line 1964, filterOutSelection() after keyPressed() call (Line 2061) // 2013-03-21
+** Need RTGraph to not re-render if label list is changed unless label checkbox is checked // 2013-03-23
+** Need GraphInfo in RTGraph to depict commonalities with selected nodes // 2013-03-23
+** Need to be able to recursively decompose elements http://www.cnn.com => www.cnn.com => 1.2.3.4 => US
+** ... Currently, decomposition is limited to just one level to avoid infinite recursion
+** ...    For example www.cnn.com => 1.2.3.4 => www.cnn.com => 1.2.3.4...
+** ... Need RTGraph option to decompose a field down into the graph elements
+** Filtering mode in RTGraphPanel is still twitchy especially when filtering specific edges/nodes // 2013-03-24
+** ... Seems related to how the no mapping set is used or perhaps when a null value is returned from the shapeBundles
+
+**\n** Non Critical List\n**
+** If an entity has a tag (comment), this needs to be a label that we can add to the graph... // 2012-09-23
+** Graph window has incorrect tranformation after resize...
+** Graph config not implemented...  also, need to move graph config to popup menu...
+** Bundle UUID -- make a var if it comes with the record...
+** Color by first, last heard
+** Add screenshots to comments...
+** Arbitrary shape selections for comment additions -- especially for XY and Graph
+** Include ability to load images into temporal view for backgrounds...  images should specify timeframe to x mapping
+** Drag n Drop file loading...
+** Drag n Drop layout loading for graph windows...
+** Provide method to add background shapes, images, text onto link-node graph...  save it in layouts
+** Tags for RTXYEntity
+** Add link-node option for date variations --- e.g., make a node out of a YYYY-MM-DD
+** Make MDS mode for link-node graph to continuously layout graph
+** Dynamic labels should work during filtering and edgelens...
+** Dynamically determine variants for different data types (url)...
+** Show timing point on all time-related graphs...XY, Temporal
+** Need to add .biz, .info, .[cc] to domain regex...
+** In temporal graph, when the max value is 1 and log scale is enabled, heights are incorrect
+** Background in graph for modeling stuff.
+** Fix KeyMaker Time Options
+** For IP logical layouts, include /8, /16, and /24 options
+** Pivot @ record level with ability to add new records...  visualize each record type as a specific color
+     ...  show the correlation in type and draw the digram out
+** Modifiy the histogram to have a stacked version beneath the legend (it'll waste one row but give perspective on the entire histo...)
+
+//
+// Finished
+//
+
+// **\nFIXED?  ** Subtraction Fails For Replace, Replace+, and Replace++\n**
+// **\nPARTIAL ** Fix aggregate in time window...\n** // Sort-of works 7/7/2012
+// **\n** Highlight issue with graph window (except when graph window is first up...) -- it doesn't seem to always reflect the brushing from other windows...\n** // 7/30/2012 - I think it was related to an incorrect creation for a specific type of window
+// **\n** Filter issue with graph window -- it doesn't seem to always reflect the same sets...\n** // 01 Aug 2012
+// **\n** Add Temporal Options to XY...\n** // 7/28/2012
+// **\n** Add Graph Edges As Files Are Loaded...\n** // 2012-09-16
+// **\n** Add a \"reset root bundles\" options...  will need graph change (e.g. remove edges from graph model)...\n** // 2012-09-16
+// **\n** In XY, if there's a single value -- make the dots in the middle...\n** // 01 Aug 2012
+// **\n** Add capability to just use octets from the IP...\n** // 30 July 2012
+// **\n** If XY value is just 0, the dots are off the chart (equal scale only?)...\n** // 04 Aug 2012
+// **\n** Line layout doesn't work for just one item selected...\n** // 14 Aug 2012
+// **\n** Graph layouts are incorrect -- seems related to UniGraph class... 13 Aug 2012
+// **\n** Clover / cloud incorrect in graph window... // 2012-09-03
+// **\n** CIDR selection in histogram...\n** // 2012-09-15 @ 1934
+// **\n** Save recently created relationship settings...\n** // 2012-08-20
+// **\n** Zero sums can be a problem for time and xy panel...  maybe all the panels...\n** // 2012-09-15... don't think theres a "correct" fix
+// **\n** Keep Only 1 Item Rows / Remove Only 1 Item Rows...\n** // 8/11/2012
+// **\n** Need to adjust histogram scale by recalculating the middle value\n** // 7/14/2012
+// **\n** Need to add better scale markings to the temporal graph\n** // 7/15/2012
+// **\n** ...\n**
+// **\n** Fix Node-1 Deg Cleanup Layouts (both of them :(...\n** // 2012-09-16... as fixed as it's going to get...
+// **\n** What happens if a relationship is added where the fields don't exist?\n** // 2012-09-16...  i think this works.
+// **\n** Cloud shape has border issues -- selecting near it drags it as well...\n** // 2012-09-03
+// **\n** Move the +mins/hours/days options in the time frame to a menu item\n** // 2012-09-10
+// **\n** Need getBundleByUUID() in Bundles class...\n** // 2012-09-10
+// **\n** Need CIDR as one of the data types for extraction...\n** // 2012-09-10
+// **\n** Need to move control panel to its own window...  like the bundles stack panel or something...\n** // 2012-09-16 @ 1530
+// ** New control panel should be able to activitate the comments panel...  and also keep subsets to intersect, add-to, subtract-from, etc.\n**
+// **\n** Need to have expand time frame buttons on temporal window... should add expand frames to each of the link-graph windows as well -- that's where they belong in the new architecture\n** // 2012-09-16 buttons added... need code still
+// **\n** Need to fix labeling -- first/last heard... CIDR Notations...  confusing...\n** // 2012-09-12 @ 22:02
+// **\n** Add label for # of bundles...\n** // 2012-09-12
+// **\n** For XY, if the width has min=max, all of the points are too large...  make them 1x1\n** // 2012-09-16... no easy fix.  would require N more operations... just let user turn it off...
+// **\n** In Graph, create 'make visible by connection'\n** // 2012-09-16... not sure what this means anymore
+// **\n** In Time, create 'add around existing events -- make visible around existing events'\n** // 2012-09-15 @ 17:40
+// ** Horizontal markings (bin by day) seem like they don't work...\n** // 2012-09-18 @ 21:55
+// ** Time mapping by days/hours/etc. is a little bit messed up...\n** // 2012-09-18 @ 21:55... probably can't fix efficiently
+// ** Finish expansion in RTGraphPanel\n** // 2012-09-22 @ 1425
+// ** Need to fix tag labeling... menu updates, aggregate entities...\n** // 2012-09-22 @ 1425
+// ** Nearest neighbor in graph window...\n** // 2012-09-22 @ 0700
+// ** Move labels in graph to something easier to manipulate (like a jlist)...\n** // 2012-09-23 @ 1001
+// ** Entity tags... and their timeframes...  keep times separate or aggregate together?...\n** // 2012-09-23 @ 2104 -- keeping them separate...
+// ** Cut & Paste for selection into graph, histogram, temporal views\n** // 2012-09-29 @ 0651
+// ** When Users Put In Temporal Markers, Popup a Dialog for Description -- include a tagging option...  for clipboard, provide context\n** // just need a table in the control panel..
+// ** Adding Intervals in Temporal Windows Sometimes Wrong\n** // 2012-09-29 @ 0700... mx versus mx0 and mouseMove
+// ** Add tagging capability to histogram showing entities\n** // 2012-09-29 @ 1941
+// ** Bundle UUIDs dont come with the timestamp comment additions\n** // 2012-09-20 @ 0700 probably fixed by mx, mx0 issue...
+// ** Add Tables to RTControl Panel for Entity Taggings and Temporal Markers\n** // 2012-09-30 @ 1753
+// ** Equal spacing in XY Entity panel not working correctly\n** // 2012-10-03 @ 2100
+// ** Probably need an XY for entities... where XY can be ratios and other math stuff...\n** // 2012-10-03 @ 2100
+// ** Not convinced that the XY sort by counts works correctly (sort by items seems correct)...\n** // 2012-10-04 @ 2105
+// ** Entity List -- make infinite, adjust values, remove tags, etc. // 2012-10-08 @ 2200
+// ** CIDR selection doesn't work in graph or histo -- see 10.0.0.0/8\n** // 2012-10-08 @ 2200
+// ** Need to rework comments panel...  it should probably be a JList... // 2012-10-14 @ 1948
+// ** Entities added to comments don't show up immediately... // 2012-10-15 @ 1100
+// ** Analyst field for entity tags? // 2012-10-15 @ 1602
+// ** Make comments tags red if the comment is not stored... // 2012-10-15 @ 1735
+// ** Entity tags/label storage and retrieval, entity selection in graph, histo window... // 2012-10-17 @ 2121
+// ** Ways to Select/Filter Based on Tags (Histogram, LinkNode Graph) // 2012-10-18 @ 1200
+// ** Normalize the tag ordering upon load // 2012-10-18 @ 1150
+// ** Make XY have cattable values (sip|dip) or (dip|dpt) - solves comms graph need // 2012-10-18 @ 1809
+// ** Make XY Entity have cattable values (dip|dpt) // 2012-10-19 @ 1705
+// ** For comments, how will CIDR blocks be handled for selecting entities? // 2012-10-30 @ 2234
+// ** After moving a CIDR to a selection, expansion in the link-node graph throws an exception... // 2012-11-06
+// ** When mouse is over link-node graph node, add labels for node and neighbors // 2012-11-10 17:47
+// ** Add EdgeLens mode to link-node graph // 2012-11-12 @ 1500
+// ** Fix timestamp regex to handle 3+ millisecond digits... // 2012-11-15 @ 1925
+// ** RTHisto is incorrect when subtracting (shft-key) bars // 2012-11-17 @ 20:06 // now it's just inefficient (null geometry)
+// ** Finish regex input parser...  difficult because regex's should be cat-able in the file - no easy way to do this without making new format... // Abandoned... that's someone else's problem - 2012-11-21
+// ** For scalars, add two derivatives:  log bins (10,100,1000, ...) and equal bins (dynamically created based on input... // 2012-11-25 @ 14:52 (easy one only)
+// ** Only apply Integer Log Bins to scalar types // 2012-11-25 @ 14:52
+// ** For Integer Log Bins => make sure they are ordered correctly (in fact... just assign them to the number that they are less than // 2012-11-25 @ 1500
+// ** For XY multi's -- don't do the diagonal elements (x == y) // 2012-11-25 @ 1513
+// ** Do [not set]'s have an effect in header data types? ... probably need to add a specific data type value // datatype added - 20121125 @ 1943
+// ** Issue with color lines in RTGraph - they switch based on location (it happens in XY as well)... // 2012-11-28 Appears to be an issue with first draw race condition
+// ** Sort the labels list in the link-node graph window... // 2012-11-28 @ 22:11
+// ** If the histogram is showing entities, make it possible to select those for comments... // 2012-11-28 @ 22:17
+// ** When setting new Root Bundles, should probably clean entity tags, globals... // 2012-11-28 @ 22:18...  not going to worry about it yet...
+// ** Mac likes to make the component to fit everything...  Histo is worst offender... // 2012-11-28 @ 22:19
+// ** For new root bundles, how do we modify the cache entries? // 2012-11-28 @ 22:20...  it's not a problem...  most of the app is stateless
+// ** Mac java doesn't like the title/text area of the comment frame... // 2012-11-29 @ 1612
+// ** Need comment loader -- load by tags, by entities, by close timeframes, etc...  Need titles stored in index file // 2012-11-29 @ 1612...  stopgap via multicsv dump
+// ** Make a link-node icon mode for different types // 2012-12-04 @ 1048 - started... need to add more types
+// ** Comment highlights don't seem to work with grouped nodes... // 2012-12-04 @ 1900 - updates Bundles CIDR methods
+// ** In time view, if the bundles don't have the right field, the color is not correct // 2012-12-14 ... fixed 2012-12-15 with [nocolor] default
+// ** Need geospatial histogram... // 2013-01-07 @ 1157
+// ** Need a Pivot Panel option to select all non-piped elements... // 2013-01-06 @ 1220
+// ** After updating root, degrees in graph may not be correct // 2012-12-13 - retested on 2013-01-08 - algorithm okay...
+// ** RTGraph Labeling - possible to make it work with only selected nodes? // 2013-01-08... not without a huge perf hit...
+// ** When two nodes are selected in the link-node graph, highlight the shortest path // 2013-01-08...nope...  probably not all that useful
+// ** Mac messes up strings in Pivot Panel... // 2013-01-08...  moved label to center line
+// ** Lock a view... (from time x to time y)... have that component continuously re-filter to maintain the view // 2013-01-08...  not sure if the use case would work...
+// ** Add a stacked histogram to the bottom of a regular histogram // 2013-02-10 Done
+// ** If the transform and the data occur in the same file (transform first, data second), an exception is thrown... // added resetTransforms to CSVParser // 2013-02-17
+// ** Added graph info functionality to depict cut vertices in graph // 2013-03-05
+// ** Modified graph info functionality to  depict cut vertices that aren't trivial // 2013-03-08
+// ** Added graph info function to show shortest path and to show distance metric // 2013-03-10
+// ** Added cleanse() function to globals to try to solve the memory leak problem...  still needs work // 2013-03-10
+// ** Fixed labels in xy graph - aparently, they didn't work correctly when you had multiple tablets // 2013-03-13
+// ** Need to re-sort the attribute selection fields -- should be list of attributes, then list of postprocs // 2013-03-15
+// ** Make it compile to java 1.6... // 2013-03-15
+// ** Replace integer assignment with a counter, not a set-based element in bundles... // 2013-03-15...  fixed 2013-03-16
+// ** Need toolbar icons to quickly bring up windows // 2013-03-15...  fixed 2013-03-16
+// ** Need to fix minute/hour/day binning in temporal view - it doesn't align with the markings... // 2013-03-16... fixed 2013-03-20
+// ** Fixed issue with BundlesG.cleanse() - specifically, postprocs were not being remembered causing null pointers // 2013-03-20
+// ** Fixed RTHisto issue where it wasn't correctly copying the bins with counts to the clipboard // 2013-03-21
+// ** Need Sticky Labels in RTGraph so that labels don't keep changing when selections are made // 2013-03-23... added
+// ** Need to have fields that have single data type and notset's be treated as the data type // 2013-03-23 // fixed 2013-03-23 (not tested :(

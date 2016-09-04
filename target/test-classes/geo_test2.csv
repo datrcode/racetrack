@@ -1,0 +1,3 @@
+IPv4CIDR,latitude,longitude,cc,city
+192.168.0.0/16,25.78,80.21,US,miami
+10.0.0.0/8,47.62,122.35,US,seattle

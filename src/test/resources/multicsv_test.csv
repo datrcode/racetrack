@@ -1,0 +1,29 @@
+to,from,A,B
+a,b,10,15
+b,c,20,20
+c,d,30,15
+
+to,from,tags
+d,e,simple
+d,f,simplex|complex
+d,g,color=white
+a,d,parent:child|color=red%2cblue
+
+entity,more_info,even_more_info
+a,firstletter,says_ah
+b,secondletter,says_b
+c,thirdletter,says_cu
+d,fourthletter,says_duh
+
+X,Y,Z
+10,20,30
+10,10,15
+5,10,30
+5,5,12
+
+beg,COUNT
+2012-11-10 12:00:00,10
+2012-11-11 13:00:00.500,20
+2012-11-12 14:00:59.501,15
+2012-11-13 13:30:00.001,20
+2012-11-14 12:59:59.999,12

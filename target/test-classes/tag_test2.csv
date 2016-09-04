@@ -1,0 +1,8 @@
+from,to,X,Y,tags
+a,b,10,10,simple
+a,c,12,18,
+a,d,15,15,color=red|color=blue
+b,f,14,14,parent:child:grandchild|color=purple
+f,g,10,10,parent:child|color=black|shiny=yes
+g,h,10,12,
+h|k,i,14,18,simple|complex|morecomplex|color=blue%2cred|texture=smooth

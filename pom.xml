@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>racetrack</groupId>
+    <artifactId>racetrack</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+  
+    <name>racetrack</name>
+    <description>Gui program for graph analysis</description>
+  
+    <scm>
+        <connection>scm:git:ssh://git@bitbucket.org:dcode/racetrack.git</connection>
+        <developerConnection>scm:git:ssh://git@bitbucket.org:dcode/racetrack.git</developerConnection>
+        <url>https://bitbucket.org/dcode/racetrack</url>
+        <tag>HEAD</tag>
+    </scm>
+    
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.4</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>racetrack.gui.RT</mainClass>
+                        </manifest>
+                        <manifestEntries>
+                            <Built-By>unattr</Built-By>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <configuration>
+                     <source>1.6</source>
+                     <target>1.6</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.kohsuke</groupId>
+            <artifactId>geoip</artifactId>
+            <version>1.2.8</version>
+        </dependency>
+        <dependency>
+            <groupId>cz.mallat.uasparser</groupId>
+            <artifactId>uasparser</artifactId>
+            <version>0.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>gov.nist.math</groupId>
+            <artifactId>jama</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+	<dependency>
+	    <groupId>com.maxmind.geoip</groupId>
+	    <artifactId>geoip-api</artifactId>
+	    <version>1.2.12</version>
+	</dependency>
+    </dependencies>
+  
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>2.10</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>3.0.1</version>
+            </plugin>
+        </plugins>
+    </reporting>
+
+</project>
