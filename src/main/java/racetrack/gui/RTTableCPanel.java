@@ -188,6 +188,9 @@ public class RTTableCPanel extends RTPanel {
     // - Other actions/options
     getRTPopupMenu().add(mi = new JMenuItem("Clear Sorts")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { clearSorts(); } } );
 
+    // - Column manipulation
+    getRTPopupMenu().add(mi = new JMenuItem("Remove Column")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { ((TableCComponent) getRTComponent()).removeColumn(); } } );
+
     // Fill in the combobox
     updateBys();
 
@@ -566,6 +569,35 @@ public class RTTableCPanel extends RTPanel {
     public TableCComponent() { }    
 
     /**
+     * Remove the column where the mouse was clicked.  The column named should be stored in the rendercontext mouse click variable.
+     */
+    public void removeColumn() {
+      RenderContext myrc = (RenderContext) getRTComponent().rc; if (myrc != null) {
+        String to_remove = mouse_click_in_column; if (to_remove != null && max_width_lu.containsKey(to_remove)) {
+	  String  new_vis_flds[]        = new String [vis_flds.length - 1];
+	  int     new_vis_flds_x[]      = new int    [vis_flds_x.length - 1];
+	  boolean new_vis_flds_scalar[] = new boolean[vis_flds_scalar.length - 1];
+
+	  int i = 0, new_i = 0;
+	  for (i=0;i<vis_flds.length;i++) {
+	    if (vis_flds[i].equals(to_remove)) { } else {
+                             new_vis_flds       [new_i] = vis_flds[i];
+	      if (new_i > 0) new_vis_flds_x     [new_i] = new_vis_flds_x[new_i - 1] + max_width_lu.get(new_vis_flds[new_i - 1]);
+	                     new_vis_flds_scalar[new_i] = vis_flds_scalar[i];
+	      new_i++;
+	    }
+	  }
+	  max_width_lu.remove(to_remove);
+
+	  // Assign them over... should be synchronized because it could tear...
+	  vis_flds_x      = new_vis_flds_x;
+	  vis_flds_scalar = new_vis_flds_scalar;
+	  vis_flds        = new_vis_flds;
+	}
+      }
+    }
+
+    /**
      * Copy all of the currently rendered rows (more than just "visible" in the component) to the clipboard.
      */
     public void copyToClipboard() {
@@ -830,6 +862,12 @@ public class RTTableCPanel extends RTPanel {
     public void mousePressed(MouseEvent me) {
       RenderContext myrc = (RenderContext) getRTComponent().rc; if (myrc != null) {
 	updateMousePositionInfo(me, myrc);
+
+        //
+        // Record mouse press column information
+	//
+        mouse_click_in_column = myrc.columnAt(me.getX());
+
 	//
 	// Scrollbar stuff
 	//
@@ -869,6 +907,15 @@ public class RTTableCPanel extends RTPanel {
       } else super.mouseReleased(me);
     }
 
+    /**
+     * Mouse clicked in this column
+     */
+    public  String mouse_click_in_column = null,
+
+    /**
+     * Mouse pressed in this column
+     */
+                   mouse_press_in_column = null;
 
     /**
      *
@@ -877,6 +924,9 @@ public class RTTableCPanel extends RTPanel {
     public void mouseClicked(MouseEvent me) {
       RenderContext myrc = (RenderContext) getRTComponent().rc; if (myrc != null) {
 	updateMousePositionInfo(me, myrc);
+
+        // Record the mouse field in case 
+        mouse_click_in_column = myrc.columnAt(me.getX());
 
 	//
 	// If the user clicks on a header, update the sort and re-render
@@ -1329,6 +1379,22 @@ public class RTTableCPanel extends RTPanel {
 	if (new_top_render_bundle_i >= bundle_list.size()) new_top_render_bundle_i = bundle_list.size() -1;
 	top_render_bundle_i = new_top_render_bundle_i;
 	base_bi = null;
+      }
+
+      /**
+       * Determine the column header at the specific x value.  If no header is found, return null.
+       *
+       *@param x x coordiante
+       *
+       *@return column header name for x coordinate. null if no header found.
+       */
+      public String columnAt(int x) {
+        Iterator<Rectangle2D> it = geom_to_header.keySet().iterator();
+	while (it.hasNext()) {
+	  Rectangle2D rect = it.next();
+	  if (x >= rect.getMinX() && x <= rect.getMaxX()) return geom_to_header.get(rect);
+	}
+	return null;
       }
 
       /**
