@@ -39,6 +39,9 @@ import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.Stroke;
 
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
@@ -152,6 +155,12 @@ public class RTTableCPanel extends RTPanel {
     add("South",  tablet_cb = new JComboBox());
 
     // Popup menu info
+    // - Copy operation
+    JMenuItem mi;
+    getRTPopupMenu().add(mi = new JMenuItem("Copy Contents")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { ((TableCComponent) getRTComponent()).copyToClipboard(); } } );
+
+    getRTPopupMenu().addSeparator();
+
     // - General rendering options
     getRTPopupMenu().add(header_cbmi            = new JCheckBoxMenuItem("Header", true));
     getRTPopupMenu().add(header_extras_cbmi     = new JCheckBoxMenuItem("Header Extras"));
@@ -177,7 +186,6 @@ public class RTTableCPanel extends RTPanel {
     getRTPopupMenu().addSeparator();
 
     // - Other actions/options
-    JMenuItem mi;
     getRTPopupMenu().add(mi = new JMenuItem("Clear Sorts")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { clearSorts(); } } );
 
     // Fill in the combobox
@@ -556,6 +564,49 @@ public class RTTableCPanel extends RTPanel {
      * Construct the tablec component
      */
     public TableCComponent() { }    
+
+    /**
+     * Copy all of the currently rendered rows (more than just "visible" in the component) to the clipboard.
+     */
+    public void copyToClipboard() {
+      Clipboard  clipboard = getToolkit().getSystemClipboard();
+      StringBuffer sb = new StringBuffer();
+
+      // Header first
+      for (int j=0;j<vis_flds.length;j++) { if (j != 0) sb.append(','); sb.append(Utils.doubleQuotify(vis_flds[j])); }
+      sb.append("\n");
+
+      // Data rows next
+      RenderContext myrc = (RenderContext) getRTComponent().rc; if (myrc != null) {
+        // Create the keymakers
+	Tablet tablet = myrc.bundle_list.get(0).getTablet();
+        KeyMaker kms[] = new KeyMaker[vis_flds.length];
+	for (int j=0;j<kms.length;j++) {
+          if (vis_flds[j].equals(TS0_FLD) || vis_flds[j].equals(TS1_FLD)) {
+          } else kms[j] = new KeyMaker(tablet, vis_flds[j]);
+        }
+        // Go through the records
+	for (int i=0;i<myrc.bundle_list.size();i++) {
+	  Bundle bundle = myrc.bundle_list.get(i);
+          for (int j=0;j<vis_flds.length;j++) { 
+	    if (j != 0) sb.append(','); 
+	    
+	    // Timestamps are special...
+	    if        (vis_flds[j].equals(TS0_FLD)) { sb.append(Utils.exactDate(bundle.ts0()));
+	    } else if (vis_flds[j].equals(TS1_FLD)) { sb.append(Utils.exactDate(bundle.ts1()));
+	    } else                                  {
+	      String strs[] = kms[j].stringKeys(bundle);
+	      String str    = "";
+	      for (int k=0;k<strs.length;k++) { if (k != 0) str += "|"; str += strs[k]; }
+	      sb.append(Utils.doubleQuotify(str));
+            }
+	  }
+          sb.append("\n");
+	}
+      }
+
+      clipboard.setContents(new StringSelection(sb.toString()), null);
+    }
 
     /**
      * Return the tables current configuration -- i.e., which tablet that it is configurred for...

@@ -3137,5 +3137,21 @@ public class Utils {
     }
     return sb.toString();
   }
+
+  /**
+   * Make a string escaped for excel-like output.
+   *
+   *@param str string to add doublequotes to if it contains either a comma, doublequote, and/or newline
+   *
+   *@return string that is properly escaped
+   */
+  public static String doubleQuotify(String str) {
+    if (str == null) return null; // hopefully upstream function will fix...
+    if (str.indexOf(",")  >= 0 || str.indexOf("\"") >= 0 || str.indexOf("\n") >= 0) {
+      StringBuffer sb = new StringBuffer(); sb.append("\"");
+      for (int i=0;i<str.length();i++) { if (str.charAt(i) == '\"') sb.append("\"\""); else sb.append(str.charAt(i)); }
+      sb.append("\""); return sb.toString();
+    } else return str;
+  }
 }
 
