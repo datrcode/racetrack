@@ -40,7 +40,7 @@ public class RTColorManager {
   /**
    * Current theme for coloring the visualization
    */
-  private static Theme theme = new LightTheme();
+  private static Theme theme = new DarkTheme();
 
   /**
    * Constant describing the light color theme

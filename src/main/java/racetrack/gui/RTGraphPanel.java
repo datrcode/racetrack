@@ -384,15 +384,15 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
   /**
    * Array for holding the node size strings
    */
-  final static String NODE_SZ_STRS[]    = { NODE_SZ_LARGE, NODE_SZ_SMALL, NODE_SZ_VARY,  NODE_SZ_VARY_LOG, NODE_SZ_TYPE,  NODE_SZ_GRAPHINFO, NODE_SZ_INVISIBLE, NODE_SZ_CLUSTERCO, NODE_SZ_LABEL },
+  final static String NODE_SZ_STRS[]    = { NODE_SZ_GRAPHINFO, NODE_SZ_LARGE, NODE_SZ_SMALL, NODE_SZ_VARY,  NODE_SZ_VARY_LOG, NODE_SZ_TYPE,  NODE_SZ_INVISIBLE, NODE_SZ_CLUSTERCO, NODE_SZ_LABEL },
   /**
    * Array for holding the node color strings
    */
-                      NODE_CO_STRS[]    = { NODE_CO_WHITE, NODE_CO_VARY,  NODE_CO_LABEL, NODE_CO_CLUSTERCO },
+                      NODE_CO_STRS[]    = { NODE_CO_VARY, NODE_CO_WHITE, NODE_CO_LABEL, NODE_CO_CLUSTERCO },
   /**
    * Array for holding the link (edge) size strings
    */
-                      LINK_SZ_STRS[]    = { LINK_SZ_NORMAL, LINK_SZ_THIN, LINK_SZ_THICK, LINK_SZ_VARY, LINK_SZ_INVISIBLE, LINK_SZ_CONDUCT, LINK_SZ_CLUSTERP },
+                      LINK_SZ_STRS[]    = { LINK_SZ_THIN, LINK_SZ_NORMAL, LINK_SZ_THICK, LINK_SZ_VARY, LINK_SZ_INVISIBLE, LINK_SZ_CONDUCT, LINK_SZ_CLUSTERP },
   /**
    * Array for holding the link (edge) color strings
    */
@@ -550,7 +550,7 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
     menu = new JMenu("Link Size");  getRTPopupMenu().add(menu); bg = new ButtonGroup();
     link_sizes  = new JRadioButtonMenuItem[LINK_SZ_STRS.length]; for (int i=0;i<LINK_SZ_STRS.length;i++) { menu.add(link_sizes[i]  = new JRadioButtonMenuItem(LINK_SZ_STRS[i],i==0)); bg.add(link_sizes[i]);  defaultListener(link_sizes[i]);  }
       menu.addSeparator();
-      menu.add(link_trans_cbmi    = new JCheckBoxMenuItem("Enable Link Transpency"));
+      menu.add(link_trans_cbmi    = new JCheckBoxMenuItem("Enable Link Transpency", true));
       menu.add(link_curves_cbmi   = new JCheckBoxMenuItem("Use Curves (Beta)"));
       menu.add(arrows_cbmi        = new JCheckBoxMenuItem("Draw Arrows"));
       menu.add(timing_cbmi        = new JCheckBoxMenuItem("Draw Timing Marks"));
