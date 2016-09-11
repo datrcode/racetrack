@@ -157,7 +157,7 @@ public class RTTableCPanel extends RTPanel {
     // Popup menu info
     // - Copy operation
     JMenuItem mi;
-    getRTPopupMenu().add(mi = new JMenuItem("Copy Contents")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { ((TableCComponent) getRTComponent()).copyToClipboard(); } } );
+    getRTPopupMenu().add(mi = new JMenuItem("Copy Contents")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { ((TableCComponent) getRTComponent()).copyToClipboard(false,false); } } );
 
     getRTPopupMenu().addSeparator();
 
@@ -599,8 +599,12 @@ public class RTTableCPanel extends RTPanel {
 
     /**
      * Copy all of the currently rendered rows (more than just "visible" in the component) to the clipboard.
+     *
+     *@param shft shift key pressed
+     *@param alt  alt key pressed
      */
-    public void copyToClipboard() {
+    @Override
+    public void copyToClipboard(boolean shft, boolean alt) {
       Clipboard  clipboard = getToolkit().getSystemClipboard();
       StringBuffer sb = new StringBuffer();
 
