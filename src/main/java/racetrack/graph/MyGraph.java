@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -483,6 +484,30 @@ class KruskalTree implements MyGraph {
     cl_cache.get(ignore).put(node, sum);
     // ... done cacheing...
     return sum;
+  }
+
+  /**
+   * Extract the subtree denoted by the specific node.
+   *
+   *@param node   root of subtree to extract
+   *@param parent parent of the root of the subtree
+   *
+   *@return undirected acyclic graph with the specified root
+   */
+  public UniGraph extractSubTreeNodes(int node, int parent) {
+    UniGraph            g_subtree     = new UniGraph();
+    LinkedList<Integer> frontier      = new LinkedList<Integer>(); frontier.add(node);
+    Set<Integer>        already_found = new HashSet<Integer>();    already_found.add(parent);
+    while (frontier.size() > 0) {
+      node = frontier.remove(); if (already_found.contains(node) == false) {
+        already_found.add(node); for (int i=0;i<getNumberOfNeighbors(node);i++) {
+          int nbor_i = getNeighbor(node, i);
+	  g_subtree.addNeighbor(getEntityDescription(node), getEntityDescription(nbor_i));
+	  frontier.add(nbor_i);
+        }
+      }
+    }
+    return g_subtree;
   }
 }
 
