@@ -77,7 +77,8 @@ public class CSVReader {
       else                                              in = new BufferedReader(new FileReader(file));
       int            line_no = 1;
       String         line;
-      while ((line = in.readLine()) != null) { line_no++;
+      boolean        keep_parsing = true;
+      while ((line = in.readLine()) != null && keep_parsing) { line_no++;
         if (line.startsWith("#")) { consumer.commentLine(line); continue; }
 	// Put the tokens into an array list
         List<String> al = new ArrayList<String>();
@@ -99,8 +100,8 @@ public class CSVReader {
               if (tokens[i].equals("")) tokens[i] = BundlesDT.NOTSET;
             }
           }
-	  consumer.consume(tokens, line, line_no);
-	} else consumer.consume(new String[0], line, line_no);
+	  keep_parsing = consumer.consume(tokens, line, line_no);
+	} else keep_parsing = consumer.consume(new String[0], line, line_no);
       }
       in.close();
     } catch (IOException ioe) { throw ioe;
