@@ -2015,6 +2015,102 @@ public class GraphLayouts {
   }
 
   /**
+   *  Recursively place children within the hyper tree.  Use an optimizing algorithm to order children such
+   * that cross-subtree edges are minimized.
+   *
+   *@param world_map results of the layout -- keypair of the node to its world coordinates
+   *@param tree      tree to layout
+   *@param node_i    node to place in this iteration
+   *@param parent    parent of the node
+   *@param depth     depth to place the node
+   *@param ht_state  state structure for layout
+   *@param cen_x     center x of the hypertree
+   *@param cen_y     center y of the hypertree
+   *@param g_orig    original graph
+   */
+  public void hyperTreePlaceChildrenOpt(Map<String,Point2D> world_map, 
+                                        KruskalTree         tree, 
+                                        int                 node_i, 
+                                        int                 parent_i, 
+					int                 depth, 
+                                        HTState             ht_state, 
+					double              cen_x, 
+					double              cen_y,
+					UniGraph            g_orig) {
+    //
+    // If it's a leaf, place it
+    //
+    if (tree.countChildren(parent_i, node_i) == 0) {
+      world_map.put(tree.getEntityDescription(node_i), new Point2D.Double(cen_x + depth * Math.cos(ht_state.angle) / ht_state.max_depth, 
+                                                                          cen_y + depth * Math.sin(ht_state.angle) / ht_state.max_depth));
+      ht_state.angle += ht_state.angle_inc;
+
+    //
+    // Otherwise, place each child recursively
+    //
+    } else                                     {
+      double begin_angle = ht_state.angle;
+      //
+      // Order the children by first extracting the subgraphs per child
+      //
+      List<Integer>        one_degrees = new ArrayList<Integer>(); 
+      Map<String,UniGraph> subtree_lu  = new HashMap<String,UniGraph>();
+      Map<UniGraph,String> child_lu    = new HashMap<UniGraph,String>();
+      for (int i=0;i<tree.getNumberOfNeighbors(node_i);i++) {
+        int nbor_i = tree.getNeighbor(node_i, i); if (nbor_i == node_i || nbor_i == parent_i) continue;
+
+	// Remove one degrees from the sorting
+        if (tree.getNumberOfNeighbors(nbor_i) <= 1) { one_degrees.add(nbor_i); } else {
+
+	// Extract the subgraphs and associate all nodes with the subtree... keep track of the actual child for this iteration as well
+	UniGraph subtree = tree.extractSubTreeNodes(nbor_i, node_i); child_lu.put(subtree, tree.getEntityDescription(nbor_i));
+        for (int j=0;j<subtree.getNumberOfEntities();j++) subtree_lu.put(tree.getEntityDescription(nbor_i), subtree);
+	}
+      }
+
+      //
+      // For each child subgraph, determine it's connectivity to other children's subgraphs...  remember that node indices vary but the node name should be the same
+      //
+      Map<String,Map<String,Integer>> affinity = new HashMap<String,Map<String,Integer>>();
+      Iterator<String> it = subtree_lu.keySet().iterator(); while (it.hasNext()) {
+        String node        = it.next(); UniGraph node_subtree = subtree_lu.get(node); String nodes_root = child_lu.get(node_subtree);
+        int    node_i_orig = g_orig.getEntityIndex(node); for (int i=0;i<g_orig.getNumberOfNeighbors(node_i_orig);i++) {
+	  int nbor_i_orig = g_orig.getNeighbor(node_i_orig, i); String nbor = g_orig.getEntityDescription(nbor_i_orig);
+	  if (subtree_lu.containsKey(nbor) && subtree_lu.get(nbor) != node_subtree) {
+	    UniGraph nbor_subtree = subtree_lu.get(nbor); String nbors_root = child_lu.get(nbor_subtree);
+	    if (affinity.containsKey(nodes_root)                         == false) affinity.put(nodes_root, new HashMap<String,Integer>());
+	    if (affinity.get        (nodes_root).containsKey(nbors_root) == false) affinity.get(nodes_root).put(nbors_root, 0);
+	    affinity.get(nodes_root).put(nbors_root, affinity.get(nodes_root).get(nbors_root) + 1);
+	  }
+	}
+      }
+     
+      //
+      // Use greedy strategy for the ordering...
+      //
+
+      //
+      // Place them recursively... to include the one degrees...
+      //
+/*
+      for (int i=0;i<sorter.size();i++) { hyperTreePlaceChildren(world_map, tree, sorter.get(i).getIndex(), node_i, depth + 1, ht_state, cen_x, cen_y); }
+*/
+
+      //
+      // Update the state for the layout algorithm
+      //
+      double end_angle  = ht_state.angle;
+      double half_angle = (begin_angle + end_angle)/2.0;
+
+      //
+      // Divide by the max depth to place it at various radii...
+      //
+      world_map.put(tree.getEntityDescription(node_i), new Point2D.Double(cen_x + depth * Math.cos(half_angle)/ht_state.max_depth,
+                                                                        cen_y + depth * Math.sin(half_angle)/ht_state.max_depth));
+    }
+  }
+
+  /**
    * Fix simple graph cases that have trivial layout results.  Sub graphs that contain just two
    * nodes for instance.
    *
