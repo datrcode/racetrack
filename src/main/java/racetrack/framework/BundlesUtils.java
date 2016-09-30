@@ -46,13 +46,37 @@ public class BundlesUtils {
    * Parse a data file and load it into the application.
    *
    * @param  bundles    application data (output)
+   * @param  file       file to parse
+   * @param  max_lines  maximum number of lines to parse, 0 indicates unlimited
+   *
+   * @return         set of the bundles (records) that were loaded
+   */
+  public static Set<Bundle> parse(Bundles bundles, File file, int max_lines) { return parse(bundles, null, file, null, max_lines); }
+
+  /**
+   * Parse a data file and load it into the application.
+   *
+   * @param  bundles    application data (output)
    * @param  rt         application class
    * @param  file       file to parse
    * @param  appconfigs lines from the parsed file that may indicate application configuration information (output)
    *
    * @return         set of the bundles (records) that were loaded
    */
-  public static Set<Bundle> parse(Bundles bundles, RT rt, File file, List<String> appconfs) {
+  public static Set<Bundle> parse(Bundles bundles, RT rt, File file, List<String> appconfs) { return parse(bundles, rt, file, appconfs, 0); }
+
+  /**
+   * Parse a data file and load it into the application.
+   *
+   * @param  bundles    application data (output)
+   * @param  rt         application class
+   * @param  file       file to parse
+   * @param  appconfigs lines from the parsed file that may indicate application configuration information (output)
+   * @param  max_lines  maximum number of lines to parse, 0 indicates unlimited
+   *
+   * @return         set of the bundles (records) that were loaded
+   */
+  public static Set<Bundle> parse(Bundles bundles, RT rt, File file, List<String> appconfs, int max_lines) {
     // Determine if the delimiter is commas, tabs, or pipes
     BufferedReader in = null; Map<String,Map<Integer,Integer>> map = new HashMap<String,Map<Integer,Integer>>();
     map.put(",",  new HashMap<Integer,Integer>()); map.put("|",  new HashMap<Integer,Integer>()); map.put("\t", new HashMap<Integer,Integer>());
@@ -94,7 +118,7 @@ public class BundlesUtils {
     CSVParser csv_parser = null;
     try { 
       // System.err.println("Creating CSVReader..."); // DEBUG
-      CSVReader reader = new CSVReader(file, csv_parser = new CSVParser(bundles, rt, set), delims, true); 
+      CSVReader reader = new CSVReader(file, csv_parser = new CSVParser(bundles, rt, set, max_lines), delims, true); 
       // System.err.println("  CSVReader Complete!"); // DEBUG
     } catch (IOException ioe) { 
       System.err.println("IOException: " + ioe); ioe.printStackTrace(System.err); 

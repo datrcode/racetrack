@@ -121,13 +121,19 @@ class CSVParser implements CSVTokenConsumer {
   List<String> appconfs = new ArrayList<String>();
 
   /**
+   * Maximum number of lines to parse -- zero indicates to parse all lines (no limit)
+   */
+  int max_lines = 0;
+
+  /**
    * Constructor - just capture the inital variables.
    *
-   * @param bundles global data structure
-   * @param rt      application control
-   * @param set     bundles (records) that get parsed
+   * @param bundles   global data structure
+   * @param rt        application control
+   * @param set       bundles (records) that get parsed
+   * @param max_lines maximum number of lines to parse -- zero indicates to parse all lines
    */
-  public CSVParser(Bundles bundles, RT rt, Set<Bundle> set) { this.bundles = bundles; this.rt = rt; this.set = set; }
+  public CSVParser(Bundles bundles, RT rt, Set<Bundle> set, int max_lines) { this.bundles = bundles; this.rt = rt; this.set = set; this.max_lines = max_lines; }
 
   /**
    * Consume comment lines.  For this implmentation, comments will include information about the application state.
@@ -309,7 +315,9 @@ class CSVParser implements CSVTokenConsumer {
 */
     }
    } catch (Throwable t) { System.err.println("Throwable: " + t + " @ Line No " + line_no); t.printStackTrace(System.err); }
-   return true;
+
+   // Halt the parsing if the max_lines variable is set
+   if (max_lines > 0 && line_no >= max_lines) return false; else return true;
   }
 
   /**
