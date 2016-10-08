@@ -280,6 +280,16 @@ public class NetflowXYPlotter {
     boolean begin_file = false;
 
     /**
+     * Timestamps are ordered
+     */
+    boolean ordered_timestamps = true;
+
+    /**
+     * Last observed timestamp
+     */
+    long last_timestamp = 0L;
+
+    /**
      * Translation information for this specific file parsing...
      */
     Map<String,String> trans = null;
@@ -379,6 +389,9 @@ public class NetflowXYPlotter {
 	     tse_l = Utils.parseTimeStamp(tse);
         if (ts0 > ts_l)  ts0 = ts_l;
 	if (ts1 < tse_l) ts1 = tse_l;
+
+        if (ts0 < last_timestamp) ordered_timestamps = false;
+	last_timestamp = ts0;
       }
       return true; // keep parsing...
     }
@@ -499,6 +512,13 @@ public class NetflowXYPlotter {
      *@return source and destination IP address pairs
      */
     public Set<String> getPairs()  { return pairs; }
+
+    /**
+     * Return true if the timestamps are monotonically increasing in order.
+     *
+     *@return true for monotonic increasing
+     */
+    public boolean orderedTimestamps() { return ordered_timestamps; }
 
     /**
      * Return the earliest timestamp.
@@ -657,6 +677,11 @@ public class NetflowXYPlotter {
     long          slice = 1000L;
 
     /**
+     * Slice for time in the plot -- animated version
+     */
+    long          slice_anim = 1000L;
+
+    /**
      * Maximum width of the plot (unless overridden by a flag)
      */
     final static int max_plot_w = 4096,
@@ -700,24 +725,26 @@ public class NetflowXYPlotter {
       g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
       g2d.setColor(Color.white); g2d.drawString(header, 5, txt_h + 4);
-      String render_time = "Records: " + records + " || Render Time: " + Utils.exactDate(System.currentTimeMillis()); g2d.drawString(render_time, plot_w - Utils.txtW(g2d,render_time) - 5, txt_h + 4);
+      String render_time = "Recs: "      + records + 
+                           " || Slice: " + Utils.humanReadableDuration(slice) +
+                           " || RTime: " + Utils.exactDate(System.currentTimeMillis()); g2d.drawString(render_time, plot_w - Utils.txtW(g2d,render_time) - 5, txt_h + 4);
 
       BufferedImage bi = null;;
 
       bi = horiz_sess.applyFinalRender(BrewerSimplified.seq7Color1());
       g2d.setColor(Color.lightGray); g2d.fillRect(lft_border - 1, sess_y - 1, bi.getWidth() + 2, bi.getHeight() + 2);
       g2d.drawImage(bi, lft_border, sess_y, null);
-      g2d.setColor(Color.white); g2d.drawString("Horizon (Sessions)", lft_border + 2, sess_y - 3);
+      g2d.setColor(Color.white); g2d.drawString("Sessions (Horizon)", lft_border + 2, sess_y - 3);
 
       bi = horiz_octs.applyFinalRender(BrewerSimplified.seq7Color2());
       g2d.setColor(Color.lightGray); g2d.fillRect(lft_border - 1, octs_y - 1, bi.getWidth() + 2, bi.getHeight() + 2);
       g2d.drawImage(bi, lft_border, octs_y, null);
-      g2d.setColor(Color.white); g2d.drawString("Horizon (Octets)", lft_border + 2, octs_y - 3);
+      g2d.setColor(Color.white); g2d.drawString("Octets (Horizon)", lft_border + 2, octs_y - 3);
 
       bi = horiz_pkts.applyFinalRender(BrewerSimplified.seq7Color3());
       g2d.setColor(Color.lightGray); g2d.fillRect(lft_border - 1, pkts_y - 1, bi.getWidth() + 2, bi.getHeight() + 2);
       g2d.drawImage(bi, lft_border, pkts_y, null);
-      g2d.setColor(Color.white); g2d.drawString("Horizon (Packets)", lft_border + 2, pkts_y - 3);
+      g2d.setColor(Color.white); g2d.drawString("Packets (Horizon)", lft_border + 2, pkts_y - 3);
 
       bi = xy_pairs.applyFinalRender(accumulation_type);
       g2d.setColor(Color.lightGray); g2d.fillRect(lft_border - 1, pairs_y - 1, bi.getWidth() + 2, bi.getHeight() + 2);
@@ -751,7 +778,12 @@ public class NetflowXYPlotter {
       String s = Utils.exactDate(aggregator.getTS0()); g2d.drawString(s, 5,                                           plot_bi.getHeight() - 2);
              s = Utils.exactDate(aggregator.getTS1()); g2d.drawString(s, plot_bi.getWidth() - 5 - Utils.txtW(g2d, s), plot_bi.getHeight() - 2);
 
-      for (int i=0;i<histos.length;i++) { histos[i].render(g2d, splits_x[i], sess_y + sess_h + txt_h, splits_x[i+1] - splits_x[i] - 5, accumulation_type); }
+      // Get the global maximum
+      long global_max = histos[0].max(accumulation_type);
+      for (int i=1;i<histos.length;i++) { if (global_max < histos[i].max(accumulation_type)) global_max = histos[i].max(accumulation_type); }
+
+      // Render the histograms in the context of the global max
+      for (int i=0;i<histos.length;i++) { histos[i].render(g2d, splits_x[i], sess_y + sess_h + txt_h, splits_x[i+1] - splits_x[i] - 5, accumulation_type, global_max); }
 
       g2d.dispose();
 
@@ -778,26 +810,26 @@ public class NetflowXYPlotter {
       // Determine the font info
       tmp_bi = new BufferedImage(10,10,BufferedImage.TYPE_INT_RGB); Graphics2D g2d = (Graphics2D) tmp_bi.getGraphics(); 
         txt_h   = Utils.txtH(g2d, "0"); 
-        maxip_w = Utils.txtW(g2d, "000.000.000.000");
+        maxip_w = Utils.txtW(g2d, "  xxx.xm 000.000.000.000"); // Make some space in the front for the actual count label
       g2d.dispose();
 
       // Determine the width of the plot... determine the timeslicing...
       long delta = aggregator.getTS1() - aggregator.getTS0() + 1L;
-      if        (seconds_scale)   { slice = 1000L;
-      } else if (minutes_scale)   { slice = 1000L*60L;
-      } else if (minutes5_scale)  { slice = 1000L*60L*5L;
-      } else if (minutes10_scale) { slice = 1000L*60L*10L;
-      } else if (hours_scale)     { slice = 1000L*60L*60L;
-      } else if (hours4_scale)    { slice = 1000L*60L*60L*4L;
-      } else if (days_scale)      { slice = 1000L*60L*60L*24L;
+      if        (seconds_scale)   { slice = 1000L;              slice_anim = 1000L;
+      } else if (minutes_scale)   { slice = 1000L*60L;          slice_anim = 1000L*5L;
+      } else if (minutes5_scale)  { slice = 1000L*60L*5L;       slice_anim = 1000L*10L;
+      } else if (minutes10_scale) { slice = 1000L*60L*10L;      slice_anim = 1000L*20L;
+      } else if (hours_scale)     { slice = 1000L*60L*60L;      slice_anim = 1000L*60L;
+      } else if (hours4_scale)    { slice = 1000L*60L*60L*4L;   slice_anim = 1000L*60L*4L;
+      } else if (days_scale)      { slice = 1000L*60L*60L*24L;  slice_anim = 1000L*60L*6L;
       } else                      {
-        if      ((delta/(1000L))                    <= max_plot_w) slice = 1000L;
-        else if ((delta/(1000L*60L))                <= max_plot_w) slice = 1000L*60L;
-        else if ((delta/(1000L*60L*5L))             <= max_plot_w) slice = 1000L*60L*5L;
-        else if ((delta/(1000L*60L*10L))            <= max_plot_w) slice = 1000L*60L*10L;
-        else if ((delta/(1000L*60L*60L))            <= max_plot_w) slice = 1000L*60L*60L;
-        else if ((delta/(slice = 1000L*60L*60L*4L)) <= max_plot_w) slice = 1000L*60L*60L*4L;
-        else                                                       slice = 1000L*60L*60L*24L;
+        if      ((delta/(1000L))            <= max_plot_w) { slice = 1000L;             slice_anim = 1000L;        }
+        else if ((delta/(1000L*60L))        <= max_plot_w) { slice = 1000L*60L;         slice_anim = 1000L*5L;     }
+        else if ((delta/(1000L*60L*5L))     <= max_plot_w) { slice = 1000L*60L*5L;      slice_anim = 1000L*10L;    }
+        else if ((delta/(1000L*60L*10L))    <= max_plot_w) { slice = 1000L*60L*10L;     slice_anim = 1000L*20L;    }
+        else if ((delta/(1000L*60L*60L))    <= max_plot_w) { slice = 1000L*60L*60L;     slice_anim = 1000L*60L;    }
+        else if ((delta/(1000L*60L*60L*4L)) <= max_plot_w) { slice = 1000L*60L*60L*4L;  slice_anim = 1000L*60L*4L; }
+        else                                               { slice = 1000L*60L*60L*24L; slice_anim = 1000L*60L*6L; }
       }
 
       // Calculate the widths
@@ -816,6 +848,9 @@ public class NetflowXYPlotter {
 		2*txt_h + sess_h  +
 		12*(txt_h+4) + // Histograms
 		bot_border;
+
+      // Print out info about the plot size
+      System.err.println("Plot Size: " + plot_w + " x " + plot_h + " | slice = " + slice + " ms (" + Utils.humanReadableDuration(slice) + ")");
 
       // Calculate the y offsets per chart -- x positions are just the lft_border value...
       sess_y   = plot_h  - 12*(txt_h+4) - bot_border - sess_h;
@@ -1177,6 +1212,21 @@ public class NetflowXYPlotter {
     public long acc(Map<String,Long> map, String key, long add) { if (map.containsKey(key) == false) map.put(key,add); else map.put(key,map.get(key)+add); return map.get(key); }
 
     /**
+     * Return the maximum value within this histogram for the specified accumulation type.
+     *
+     *@param accumulation_type variable to use for counting
+     *
+     *@return local maximum
+     */
+    public long max(AccumulationType accumulation_type) {
+      switch (accumulation_type) {
+        case packets: return max_pkts;
+	case octets:  return max_octs;
+        default:      return max_sess;
+      }
+    }
+
+    /**
      * Render the histograms at the specified coordinates.
      *
      *@param g2d               graphics object
@@ -1184,8 +1234,9 @@ public class NetflowXYPlotter {
      *@param y                 y coordinate as the upper left
      *@param w                 maximum width of the histograms
      *@param accumulation_type which variable to use for counting
+     *@param global_max        global max across all histograms -- if negative, ignore and a local max is used
      */
-    public void render(Graphics2D g2d, int x, int y, int w, AccumulationType accumulation_type) {
+    public void render(Graphics2D g2d, int x, int y, int w, AccumulationType accumulation_type, long global_max) {
       int txt_h = Utils.txtH(g2d, "0");
       // Choose the right maps based on the accumulation types
       Map<String,Long> sipm,dipm,dptm; long max;
@@ -1194,6 +1245,7 @@ public class NetflowXYPlotter {
 	case octets:  sipm = sip_octs; dipm = dip_octs; dptm = dpt_octs; max = max_octs; break;
         default:      sipm = sip_sess; dipm = dip_sess; dptm = dpt_sess; max = max_sess; break;
       }
+      if (global_max >= 0) { max = global_max; }
 
       // For the top three, make histograms...
       String top_three[];
@@ -1218,8 +1270,10 @@ public class NetflowXYPlotter {
       int txt_h = Utils.txtH(g2d, "0"); for (int i=0;i<top.length;i++) {
         int bar_w = (int) ((w * map.get(top[i]))/max);
         Color color = Color.darkGray; color = new Color(accumulationColor(1, accumulation_type));
-        g2d.setColor(color);        g2d.fillRect(x,y,bar_w,txt_h+2);
-	g2d.setColor(Color.white);  g2d.drawString(top[i], x + 2, y + txt_h);
+        g2d.setColor(color);          g2d.fillRect(x,y,bar_w,txt_h+2);
+        String hr = Utils.humanReadable(map.get(top[i]));
+	g2d.setColor(Color.darkGray); g2d.drawString(hr, x - 3 - Utils.txtW(g2d, hr), y + txt_h - 1);
+	g2d.setColor(Color.white);    g2d.drawString(top[i], x + 2, y + txt_h -1);
         y += txt_h + 3;
       }
       return y;
