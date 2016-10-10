@@ -91,26 +91,40 @@ public class NetflowXYPlotter {
 	  days_scale      = false;
 
   /**
+   * Timestamp to start with (forced)
+   */
+  long    ts0_force = 0L,
+
+  /**
+   * Timestamp to end with (forced)
+   */
+          ts1_force = 0L;
+
+  /**
    * Construct the plotter... parse the args for flag information
    */
   public NetflowXYPlotter(String args[]) throws IOException {
     List<File> files_al = new ArrayList<File>();
 
-    for (int i=0;i<args.length;i++) {
-      if        (args[i].equals("-lowport"))   { low_port       = true;
-      } else if (args[i].equals("-duration"))  { model_duration = true; System.err.println("Model Duration Not Implemented...");
-      } else if (args[i].equals("-minutes"))   { minutes_scale  = true; // Force granularity to be a minute
-      } else if (args[i].equals("-seconds"))   { seconds_scale  = true; // .. a second
-      } else if (args[i].equals("-hours"))     { hours_scale    = true; // .. an hour
-      } else if (args[i].equals("-hours4"))    { hours4_scale   = true; // .. 4 hours
-      } else if (args[i].equals("-5minutes"))  { minutes5_scale = true; // .. 5 minutes
-      } else if (args[i].equals("-10minutes")) { minutes10_scale= true; // .. 10 minutes
-      } else if (args[i].equals("-days"))      { days_scale     = true; // .. days...
-      } else if ((new File(args[i])).exists()) { files_al.add(new File(args[i]));
+    int i = 0;
+    while (i <args.length) {
+      if        (args[i].equals("-lowport"))   { low_port       = true; i++;
+      } else if (args[i].equals("-duration"))  { model_duration = true; i++;
+      } else if (args[i].equals("-minutes"))   { minutes_scale  = true; i++; // Force granularity to be a minute
+      } else if (args[i].equals("-seconds"))   { seconds_scale  = true; i++; // .. a second
+      } else if (args[i].equals("-hours"))     { hours_scale    = true; i++; // .. an hour
+      } else if (args[i].equals("-hours4"))    { hours4_scale   = true; i++; // .. 4 hours
+      } else if (args[i].equals("-5minutes"))  { minutes5_scale = true; i++; // .. 5 minutes
+      } else if (args[i].equals("-10minutes")) { minutes10_scale= true; i++; // .. 10 minutes
+      } else if (args[i].equals("-days"))      { days_scale     = true; i++; // .. days...
+      } else if (args[i].equals("-begin") && i <= (args.length-2) && Utils.isTimeStamp(args[i+1])) { ts0_force = Utils.parseTimeStamp(args[i+1]); i += 2;
+      } else if (args[i].equals("-end")   && i <= (args.length-2) && Utils.isTimeStamp(args[i+1])) { ts1_force = Utils.parseTimeStamp(args[i+1]); i += 2;
+      } else if ((new File(args[i])).exists()) { files_al.add(new File(args[i])); i++;
       } else throw new RuntimeException("Do Not Understand Argument \"" + args[i] + "\"");
     }
 
-    files = new File[files_al.size()]; for (int i=0;i<files.length;i++) files[i] = files_al.get(i);
+    // Copy files over to a fixed array
+    files = new File[files_al.size()]; for (i=0;i<files.length;i++) files[i] = files_al.get(i);
   }
 
   /**
@@ -346,8 +360,16 @@ public class NetflowXYPlotter {
 	String tse   = null;
         if (trans_i.containsKey("tse")) tse = tokens[trans_i.get("tse")];
         else                            tse = ts; // should probably be a derivative of ts + DUR
+
+	// Convert some to their long/integer versions...
+	long   ts_l  = Utils.parseTimeStamp(ts),
+	       tse_l = Utils.parseTimeStamp(tse);
         int    spt_i = Integer.parseInt(spt),
 	       dpt_i = Integer.parseInt(dpt);
+
+        // if forced time, make sure it's within those bounds...
+        if (ts0_force != 0L && ts_l < ts0_force) return true;
+	if (ts1_force != 0L && ts_l > ts1_force) return true;
 
         int DOCTS_i = 0, SOCTS_i = 0, DPKTS_i = 0, SPKTS_i = 0;
         if (trans_i.containsKey(StatsOverlay.DOCTS)) {
@@ -385,8 +407,6 @@ public class NetflowXYPlotter {
 	spts.add(spt_i);
 	dpts.add(dpt_i);
 
-	long ts_l  = Utils.parseTimeStamp(ts),
-	     tse_l = Utils.parseTimeStamp(tse);
         if (ts0 > ts_l)  ts0 = ts_l;
 	if (ts1 < tse_l) ts1 = tse_l;
 
@@ -1054,8 +1074,16 @@ public class NetflowXYPlotter {
 	String tse   = null;
         if (file_translation.containsKey("tse")) tse = tokens[file_translation.get("tse")];
         else                            tse = ts; // should probably be a derivative of ts + DUR
+
+	// Convert to integer representations
         int    spt_i = Integer.parseInt(spt),
 	       dpt_i = Integer.parseInt(dpt);
+	long   ts_l  = Utils.parseTimeStamp(ts),
+	       tse_l = Utils.parseTimeStamp(tse);
+
+        // if forced time, make sure it's within those bounds...
+        if (ts0_force != 0L && ts_l < ts0_force) return true;
+	if (ts1_force != 0L && ts_l > ts1_force) return true;
 
         int DOCTS_i = 0, SOCTS_i = 0, DPKTS_i = 0, SPKTS_i = 0;
         if (file_translation.containsKey(StatsOverlay.DOCTS)) {
@@ -1084,21 +1112,31 @@ public class NetflowXYPlotter {
 	if (OCTS_i == 0 && (DOCTS_i + SOCTS_i) > 0) OCTS_i = DOCTS_i + SOCTS_i;
 	if (PKTS_i == 0 && (DPKTS_i + SPKTS_i) > 0) PKTS_i = DPKTS_i + SPKTS_i;
 
-	long ts_l  = Utils.parseTimeStamp(ts),
-	     tse_l = Utils.parseTimeStamp(tse);
 
         if (chart_type == XYChartType.long_sum) {
 	  long inc = 1L;
           if        (accumulation_type == AccumulationType.octets)  inc = OCTS_i;
 	  else if   (accumulation_type == AccumulationType.packets) inc = PKTS_i;
-          xy_dstip.accumulate(dip,                 ts_l, inc);
-          xy_dstpt.accumulate(dpt_i,               ts_l, inc);
-          xy_srcip.accumulate(sip,                 ts_l, inc);
-          xy_srcpt.accumulate(spt_i,               ts_l, inc);
-	  xy_pairs.accumulate(ipPairsKey(sip,dip), ts_l, inc);
-	  horiz_sess.accumulate(ts_l, 1L);
-	  horiz_octs.accumulate(ts_l, OCTS_i);
-	  horiz_pkts.accumulate(ts_l, PKTS_i);
+
+	  if (model_duration) {
+            xy_dstip.accumulate(dip,                 ts_l, tse_l, inc);
+            xy_dstpt.accumulate(dpt_i,               ts_l, tse_l, inc);
+            xy_srcip.accumulate(sip,                 ts_l, tse_l, inc);
+            xy_srcpt.accumulate(spt_i,               ts_l, tse_l, inc);
+	    xy_pairs.accumulate(ipPairsKey(sip,dip), ts_l, tse_l, inc);
+	    horiz_sess.accumulate(ts_l, tse_l, 1L);
+	    horiz_octs.accumulate(ts_l, tse_l, OCTS_i);
+	    horiz_pkts.accumulate(ts_l, tse_l, PKTS_i);
+	  } else              {
+            xy_dstip.accumulate(dip,                 ts_l, inc);
+            xy_dstpt.accumulate(dpt_i,               ts_l, inc);
+            xy_srcip.accumulate(sip,                 ts_l, inc);
+            xy_srcpt.accumulate(spt_i,               ts_l, inc);
+	    xy_pairs.accumulate(ipPairsKey(sip,dip), ts_l, inc);
+	    horiz_sess.accumulate(ts_l, 1L);
+	    horiz_octs.accumulate(ts_l, OCTS_i);
+	    horiz_pkts.accumulate(ts_l, PKTS_i);
+	  }
         }
 
 	boolean histo_consumed = false;
@@ -1494,7 +1532,7 @@ public class NetflowXYPlotter {
      *@param ts      timestamp used to calculate the x coordinate
      *@param set_str string for sets
      */
-    public void accumulate(String y_str, long ts, String set_str) { int y = yTransform(y_str), x = rc.xTransform(ts); ((Set<String>) objs[y][x]).add(set_str); }
+    // public void accumulate(String y_str, long ts, String set_str) { int y = yTransform(y_str), x = rc.xTransform(ts); ((Set<String>) objs[y][x]).add(set_str); }
 
     /**
      * Accumulate for integer sets
@@ -1503,7 +1541,7 @@ public class NetflowXYPlotter {
      *@param ts      timestamp used to calculate the x coordinate
      *@param set_int integer for sets
      */
-    public void accumulate(String y_str, long ts, Integer set_int) { int y = yTransform(y_str), x = rc.xTransform(ts); ((Set<Integer>) objs[y][x]).add(set_int); }
+    // public void accumulate(String y_str, long ts, Integer set_int) { int y = yTransform(y_str), x = rc.xTransform(ts); ((Set<Integer>) objs[y][x]).add(set_int); }
 
     /**
      * Accumulate for long values (sum)
@@ -1515,13 +1553,30 @@ public class NetflowXYPlotter {
     public void accumulate(String y_str, long ts, long val) { int y = yTransform(y_str), x = rc.xTransform(ts); sums[y][x] += val; }
 
     /**
+     * Accumulate for long values (sum)
+     *
+     *@param y_str   string for calculating the y coordinate -- must be in the y_lu map
+     *@param ts0     timestamp used to calculate the init x coordinate
+     *@param ts1     timestamp used to calculate the final x coordinate
+     *@param val     value to sum up
+     */
+    public void accumulate(String y_str, long ts0, long ts1, long val) { 
+      int  y  = yTransform(y_str), 
+           x0 = rc.xTransform(ts0),
+	   x1 = rc.xTransform(ts1);
+      int  bins    = x1 - x0 + 1;
+      long bin_amt = val/bins; if (bin_amt == 0L) bin_amt = 1L;
+      for (int x=x0;x<=x1;x++) sums[y][x] += bin_amt;
+    }
+
+    /**
      * Accumulate for String sets
      *
      *@param y_i     integer for calculating the y coordinate -- must be in the y_lu_i map
      *@param ts      timestamp used to calculate the x coordinate
      *@param set_str string for sets
      */
-    public void accumulate(int y_i, long ts, String set_str) { int y = yTransform(y_i), x = rc.xTransform(ts); ((Set<String>) objs[y][x]).add(set_str); }
+    // public void accumulate(int y_i, long ts, String set_str) { int y = yTransform(y_i), x = rc.xTransform(ts); ((Set<String>) objs[y][x]).add(set_str); }
 
     /**
      * Accumulate for integer sets
@@ -1530,7 +1585,7 @@ public class NetflowXYPlotter {
      *@param ts      timestamp used to calculate the x coordinate
      *@param set_int integer for sets
      */
-    public void accumulate(int y_i, long ts, Integer set_int) { int y = yTransform(y_i), x = rc.xTransform(ts); ((Set<Integer>) objs[y][x]).add(set_int); }
+    // public void accumulate(int y_i, long ts, Integer set_int) { int y = yTransform(y_i), x = rc.xTransform(ts); ((Set<Integer>) objs[y][x]).add(set_int); }
 
     /**
      * Accumulate for long values (sum)
@@ -1540,6 +1595,23 @@ public class NetflowXYPlotter {
      *@param val     value to sum up
      */
     public void accumulate(int y_i, long ts, long val) { int y = yTransform(y_i), x = rc.xTransform(ts); sums[y][x] += val; }
+
+    /**
+     * Accumulate for long values (sum)
+     *
+     *@param y_i     integer for calculating the y coordinate -- must be in the y_lu_i map
+     *@param ts0     timestamp used to calculate the init x coordinate
+     *@param ts1     timestamp used to calculate the final x coordinate
+     *@param val     value to sum up
+     */
+    public void accumulate(int y_i, long ts0, long ts1, long val) { 
+      int  y  = yTransform(y_i), 
+           x0 = rc.xTransform(ts0),
+	   x1 = rc.xTransform(ts1);
+      int  bins    = x1 - x0 + 1;
+      long bin_amt = val/bins; if (bin_amt == 0L) bin_amt = 1L;
+      for (int x=x0;x<=x1;x++) sums[y][x] += bin_amt;
+    }
   }
 
   /**
@@ -1615,6 +1687,24 @@ public class NetflowXYPlotter {
     public void accumulate(long ts, long val) { int x = render_context.xTransform(ts); sums[x] += val; if (sums[x] > max_sum) max_sum = sums[x]; }
 
     /**
+     * Accumulate a value into a range of chart locations (spread over time).
+     *
+     *@param ts0  timestamp -- determines the init x coordinate
+     *@param ts1  timestmap -- determines the final x coordate
+     *@param val value to accumulate
+     */
+    public void accumulate(long ts0, long ts1, long val) {
+      int  x0      = render_context.xTransform(ts0),
+           x1      = render_context.xTransform(ts1);
+      int  bins    = x1 - x0 + 1;
+      long bin_amt = val/bins; if (bin_amt == 0L) bin_amt = 1L;
+      for (int x=x0;x<=x1;x++) {
+        sums[x] += bin_amt;
+	if (sums[x] >max_sum) max_sum = sums[x];
+      }
+    }
+
+    /**
      * Perform the final render for this chart.  Use the specified colors.
      *
      *@param colors colors to use -- zero is the background color...
@@ -1668,6 +1758,11 @@ public class NetflowXYPlotter {
     out.println("  -5minutes");
     out.println("  -10minutes");
     out.println("  -days");
+    out.println("");
+    out.println(" Start/Stop Times");
+    out.println(" ================");
+    out.println(" -begin YYYY-MM-DDTHH:MM:SS");
+    out.println(" -end   YYYY-MM-DDTHH:MM:SS");
   }
 
   /**
@@ -1676,6 +1771,24 @@ public class NetflowXYPlotter {
    *@Param args command line arguments
    */
   public static void main(String args[]) {
+    // Print out the apache license info...
+    System.out.println("License Information");
+    System.out.println("");
+    System.out.println("Copyright 2016 David Trimm");
+    System.out.println("");
+    System.out.println("Licensed under the Apache License, Version 2.0 (the \"License\");");
+    System.out.println("you may not use this file except in compliance with the License.");
+    System.out.println("You may obtain a copy of the License at");
+    System.out.println("");
+    System.out.println("http://www.apache.org/licenses/LICENSE-2.0");
+    System.out.println("");
+    System.out.println("Unless required by applicable law or agreed to in writing, software");
+    System.out.println("distributed under the License is distributed on an \"AS IS\" BASIS,");
+    System.out.println("WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.");
+    System.out.println("See the License for the specific language governing permissions and");
+    System.out.println("limitations under the License.");
+    System.out.println("");
+
     try {
       if (args.length == 0) { printUsage(System.err); System.exit(0); }
 
