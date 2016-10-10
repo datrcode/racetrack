@@ -29,14 +29,19 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 
+import java.text.SimpleDateFormat;
+
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 
 import javax.imageio.ImageIO;
 
@@ -736,6 +741,88 @@ public class NetflowXYPlotter {
     public int xTransform(long ts) { return (int) ((ts - aggregator.getTS0())/slice); }
 
     /**
+     * Formatter for a year
+     */
+    SimpleDateFormat yer_sdf = new SimpleDateFormat("yyyy"),
+
+    /**
+     * Formatter for a month
+     */
+                     mon_sdf = new SimpleDateFormat("MM"),
+
+    /**
+     * Formatter for a day
+     */
+		     day_sdf = new SimpleDateFormat("dd"),
+
+    /**
+     * Formatter for an hour
+     */
+		     hor_sdf = new SimpleDateFormat("dd"),
+
+    /**
+     * Formatter for a minute
+     */
+		     min_sdf = new SimpleDateFormat("mm");
+
+    /**
+     * Render the temporal labels for the plot.
+     */
+    private void renderTemporalLabels(Graphics2D g2d) {
+      long ts0 = aggregator.getTS0(), ts1 = aggregator.getTS1();
+
+      // Find the first human readable date in the timeframe...
+      int yer = Integer.parseInt(yer_sdf.format(new Date(ts0))); 
+      long yer_ms = Utils.parseTimeStamp(""+yer+"-01-01");                        long yer2_ms = yer_ms + 365*24*60*60*1000, yer5_ms = yer_ms + 5*365*24*60*60*1000;
+
+      int mon = Integer.parseInt(mon_sdf.format(new Date(ts0))); 
+      long mon_ms = Utils.parseTimeStamp(""+yer+"-"+mon+"-01");                   long mon2_ms = mon_ms + 30*24*60*60*1000,  mon5_ms = mon_ms + 5*30*24*60*60*1000;
+
+      int day = Integer.parseInt(day_sdf.format(new Date(ts0))); 
+      long day_ms = Utils.parseTimeStamp(""+yer+"-"+mon+"-"+day);                 long day2_ms = day_ms + 24*60*60*1000,     day5_ms = day_ms + 5*24*60*60*1000;
+
+      int hor = Integer.parseInt(hor_sdf.format(new Date(ts0))); 
+      long hor_ms = Utils.parseTimeStamp(""+yer+"-"+mon+"-"+day+"T"+hor);         long hor2_ms = hor_ms + 60*60*1000,        hor5_ms = hor_ms + 5*60*60*1000;
+
+      int min = Integer.parseInt(min_sdf.format(new Date(ts0))); 
+      long min_ms = Utils.parseTimeStamp(""+yer+"-"+mon+"-"+day+"T"+hor+":"+min); long min2_ms = min_ms + 60*1000,           min5_ms = min_ms + 5*60*1000;
+
+      long start_ms = min_ms; int field = Calendar.MINUTE; int amount = 1; SimpleDateFormat sdf = null;
+      if        ((yer_ms >= ts0 && yer_ms <= ts1) || (yer2_ms >= ts0 && yer2_ms <= ts1)) {
+        start_ms = yer_ms; 
+        if (yer5_ms >= ts0 && yer5_ms <= ts1) { field = Calendar.YEAR;        sdf = new SimpleDateFormat("yyyy");     }
+	else                                  { field = Calendar.MONTH;       sdf = new SimpleDateFormat("yyyy-MMM"); }
+      } else if ((mon_ms >= ts0 && mon_ms <= ts1) || (mon2_ms >= ts0 && mon2_ms <= ts1)) {
+        start_ms = mon_ms; 
+        if (mon5_ms >= ts0 && mon5_ms <= ts1) { field = Calendar.MONTH;       sdf = new SimpleDateFormat("MMM");    }
+	else                                  { field = Calendar.DAY_OF_YEAR; sdf = new SimpleDateFormat("MMM dd"); }
+      } else if ((day_ms >= ts0 && day_ms <= ts1) || (day2_ms >= ts0 && day2_ms <= ts1)) {
+        start_ms = day_ms; 
+	if (day5_ms >= ts0 && day5_ms <= ts1) { field = Calendar.DAY_OF_YEAR; sdf = new SimpleDateFormat("MMM dd"); }
+        else                                  { field = Calendar.HOUR;        sdf = new SimpleDateFormat("hh:mm");  }
+      } else if ((hor_ms >= ts0 && hor_ms <= ts1) || (hor2_ms >= ts0 && hor2_ms <= ts1)) {
+        start_ms = hor_ms; 
+	if (hor5_ms >= ts0 && hor5_ms <= ts1) { field = Calendar.HOUR;        sdf = new SimpleDateFormat("hh:mm");  }
+	else                                  { field = Calendar.MINUTE;      sdf = new SimpleDateFormat("hh:mm");  }
+      } else if ((min_ms >= ts0 && min_ms <= ts1) || (min2_ms >= ts0 && min2_ms <= ts1)) {
+        start_ms = min_ms; field = Calendar.MINUTE;                           sdf = new SimpleDateFormat("hh:mm");
+      }
+
+
+      // Print the labels
+      Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("GMT")); calendar.setTimeInMillis(start_ms);
+      while (calendar.getTimeInMillis() <= ts1) {
+        String str = sdf.format(new Date(calendar.getTimeInMillis()));
+	int x = xTransform(calendar.getTimeInMillis());
+	if (x >= lft_border && x <= lft_border + plot_w) {
+	  g2d.setColor(Color.darkGray);  g2d.drawLine(x, 5*txt_h, x, label_ys[label_ys.length-1] + 3*txt_h);
+	  g2d.setColor(Color.lightGray); for (int i=0;i<label_ys.length;i++) g2d.drawString(str, x + 2, label_ys[i] + 3);
+        }
+        calendar.add(field,amount);
+      }
+    }
+
+    /**
      * Return the finalized plot.
      *
      *@return final plot
@@ -743,6 +830,8 @@ public class NetflowXYPlotter {
     public BufferedImage getPlot(String header) { 
       Graphics2D g2d = (Graphics2D) plot_bi.getGraphics(); g2d.setColor(Color.darkGray);
       g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+      renderTemporalLabels(g2d);
 
       g2d.setColor(Color.white); g2d.drawString(header, 5, txt_h + 4);
       String render_time = "Recs: "      + records + 
@@ -821,6 +910,11 @@ public class NetflowXYPlotter {
     AccumulationType accumulation_type;
 
     /**
+     * Y locations for the timeframe labels
+     */
+    int label_ys[];
+
+    /**
      * Construct the render context
      */
     public RenderContext(XYChartType chart_type, AccumulationType accumulation_type) {
@@ -868,6 +962,14 @@ public class NetflowXYPlotter {
 		2*txt_h + sess_h  +
 		12*(txt_h+4) + // Histograms
 		bot_border;
+
+      // Determine the label y locations
+      label_ys = new int[5]; 
+      label_ys[0] = top_border  + 2*txt_h + pairs_h + txt_h;
+      label_ys[1] = label_ys[0] + 2*txt_h + srcip_h + txt_h;
+      label_ys[2] = label_ys[1] + 2*txt_h + srcpt_h + txt_h;
+      label_ys[3] = label_ys[2] + 2*txt_h + dstip_h + txt_h;
+      label_ys[4] = label_ys[3] + 2*txt_h + dstpt_h + txt_h;
 
       // Print out info about the plot size
       System.err.println("Plot Size: " + plot_w + " x " + plot_h + " | slice = " + slice + " ms (" + Utils.humanReadableDuration(slice) + ")");
