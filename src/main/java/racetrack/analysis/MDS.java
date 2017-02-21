@@ -477,9 +477,9 @@ public class MDS {
 
 	public void paintComponent(Graphics g) {
       int w = getWidth(), h = getHeight();
-      Graphics2D g2d = (Graphics2D) g; g2d.setColor(Color.black); g2d.fillRect(0,0,w,h);
+      Graphics2D g2d = (Graphics2D) g; g2d.setColor(Color.white); g2d.fillRect(0,0,w,h);
       for (int i=0;i<lo.length;i++) {
-        if (fixed[i]) g2d.setColor(Color.red); else g2d.setColor(Color.lightGray);
+        if (fixed[i]) g2d.setColor(Color.red); else g2d.setColor(Color.black);
         int sx = (int) (w * (lo[i][0] - lo_min[0])/(lo_max[0] - lo_min[0])),
             sy = (int) (h * (lo[i][1] - lo_min[1])/(lo_max[1] - lo_min[1]));
         g2d.fillRect(sx,sy,2,2);
@@ -496,16 +496,15 @@ public class MDS {
     try {
 /*
       MDSSquare square = new MDSSquare();
-      MDS mds = new MDS(MDS.MDSType.EXHAUSTIVE, square, 2);
+      MDS mds = new MDS(MDSType.EXHAUSTIVE, square, 2);
       double loc[] = new double[2];
       int i = 0; loc[0] = square.getX(i); loc[1] = square.getY(i); mds.fixElement(i, loc);
           i = 1; loc[0] = square.getX(i); loc[1] = square.getY(i); mds.fixElement(i, loc);
           i = 2; loc[0] = square.getX(i); loc[1] = square.getY(i); mds.fixElement(i, loc);
 */
-/*
-      int num_of_points = 900000; if (args.length > 0) num_of_points = Integer.parseInt(args[0]);
+      int num_of_points = 90000; if (args.length > 0) num_of_points = Integer.parseInt(args[0]);
       MDSCircle  circle  = new MDSCircle(num_of_points);
-      MDS       mds    = new MDS(MDS.MDSType.STOCHASTIC_VELOCITY, circle, 2);
+      MDS       mds    = new MDS(MDSType.STOCHASTIC_VELOCITY, circle, 2);
       int fixed = 0;
       for (int i=0;i<num_of_points;i++) {
         if (Math.random() < 0.999 || fixed > 10) continue; 
@@ -514,8 +513,7 @@ public class MDS {
         mds.fixElement(r, loc);
         fixed++;
       }
-*/
-
+/*
       MDSUSCity  us_city = new MDSUSCity();
       // MDS mds = new MDS(MDS.MDSType.EXHAUSTIVE, us_city, 2); // Slow - convergence is questionable
       // MDS mds = new MDS(MDS.MDSType.EXHAUSTIVE_VELOCITY, us_city, 2); // Slow - convergence is questionable
@@ -526,6 +524,7 @@ public class MDS {
         double loc[] = us_city.getLatLon(point_i);
 	mds.fixElement(point_i, loc);
       }
+*/
 
       JFrame     frame      = new JFrame("MDS Test");
       JComponent component  = mds.getComponent();

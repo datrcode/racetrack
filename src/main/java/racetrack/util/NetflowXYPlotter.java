@@ -787,7 +787,7 @@ public class NetflowXYPlotter {
       int min = Integer.parseInt(min_sdf.format(new Date(ts0))); 
       long min_ms = Utils.parseTimeStamp(""+yer+"-"+mon+"-"+day+"T"+hor+":"+min); long min2_ms = min_ms + 60*1000,           min5_ms = min_ms + 5*60*1000;
 
-      long start_ms = min_ms; int field = Calendar.MINUTE; int amount = 1; SimpleDateFormat sdf = null;
+      long start_ms = min_ms; int field = Calendar.MINUTE; int amount = 1; SimpleDateFormat sdf = new SimpleDateFormat("hh:mm");
       if        ((yer_ms >= ts0 && yer_ms <= ts1) || (yer2_ms >= ts0 && yer2_ms <= ts1)) {
         start_ms = yer_ms; 
         if (yer5_ms >= ts0 && yer5_ms <= ts1) { field = Calendar.YEAR;        sdf = new SimpleDateFormat("yyyy");     }
@@ -1817,19 +1817,20 @@ public class NetflowXYPlotter {
       BufferedImage bi  = new BufferedImage(sums.length, h, BufferedImage.TYPE_INT_RGB);
       Graphics2D    g2d = (Graphics2D) bi.getGraphics();
 
-      Color cs[] = new Color[colors.length]; for (int i=0;i<cs.length;i++) cs[i] = new Color((colors[i] >> 16)&0x00ff,(colors[i] >> 8)&0x00ff,(colors[i] >> 0)&0x00ff);
-
-      long sevenths = max_sum/7;
+      Color cs[] = new Color[4];
+      cs[0] = new Color((colors[0]               >> 16)&0x00ff,(colors[0]               >> 8)&0x00ff,(colors[0]               >> 0)&0x00ff);
+      cs[1] = new Color((colors[1]               >> 16)&0x00ff,(colors[1]               >> 8)&0x00ff,(colors[1]               >> 0)&0x00ff);
+      cs[2] = new Color((colors[colors.length/2] >> 16)&0x00ff,(colors[colors.length/2] >> 8)&0x00ff,(colors[colors.length/2] >> 0)&0x00ff);
+      cs[3] = new Color((colors[colors.length-1] >> 16)&0x00ff,(colors[colors.length-1] >> 8)&0x00ff,(colors[colors.length-1] >> 0)&0x00ff);
 
       for (int i=0;i<sums.length;i++) {
-        if (sums[i] == 0L) { g2d.setColor(cs[0]); g2d.fillRect(i,0,1,h);
-	} else             {
-	  int pri = (int) (sums[i]/sevenths); if (pri < 1) pri = 1; if (pri >= cs.length) pri = cs.length - 1;
-	  int sec = pri - 1;
-	  g2d.setColor(cs[sec]); g2d.fillRect(i,0,1,h);
-	  g2d.setColor(cs[pri]);
-	  int bar_h = (int) ((h * (sums[i]%sevenths))/sevenths);
-	  g2d.fillRect(i, h - bar_h, 1, bar_h);
+        g2d.setColor(cs[0]); g2d.fillRect(i,0,1,h);
+	if (sums[i] >  0L) {
+          int total_h = (int) ((3 * h * sums[i])/max_sum);
+          if        (total_h < 1*h) {                                             g2d.setColor(cs[1]); g2d.fillRect(i, h - total_h - 0*h, 1, total_h);
+          } else if (total_h < 2*h) { g2d.setColor(cs[1]); g2d.fillRect(i,0,1,h); g2d.setColor(cs[2]); g2d.fillRect(i, h - total_h - 1*h, 1, total_h);
+          } else if (total_h < 3*h) { g2d.setColor(cs[2]); g2d.fillRect(i,0,1,h); g2d.setColor(cs[3]); g2d.fillRect(i, h - total_h - 2*h, 1, total_h);
+	  } else                    { g2d.setColor(cs[3]); g2d.fillRect(i,0,1,h); }
 	}
       }
 

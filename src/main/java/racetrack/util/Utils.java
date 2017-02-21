@@ -690,9 +690,9 @@ public class Utils {
    * least significant order: YYYY-MM-DD HH:MM:SS.mmmZ.
    */
   static String  timestamp_regex   = "(" +
-                                         "[0-9]{4}[-./](1[0-2]|0[1-9])[-./](3[01]|[12][0-9]|[0][1-9])" +
-                                         "([ T]" +
-				         "(2[0-3]|[01][0-9])([:]([0-5][0-9])([:]([0-5][0-9])([.][0-9]*){0,1}[Z]{0,1}){0,1}){0,1}){0,1}" +
+                                       "[0-9]{4}[-./](1[0-2]|0[1-9]|[1-9])[-./](3[01]|[12][0-9]|[0][1-9]|[1-9])" +
+                                       "([ T]" +
+				       "(2[0-3]|[01][0-9]|[0-9])([:]([0-5][0-9])([:]([0-5][0-9])([.][0-9]*){0,1}[Z]{0,1}){0,1}){0,1}){0,1}" +
                                      ")|(" +
 				       "[0-9]{4}(12|11|10|0[1-9])(0[1-9]|[12][0-9]|3[01])" +
 				     ")|(" +
@@ -703,6 +703,12 @@ public class Utils {
 				       "[0-9]{4}(12|11|10|0[1-9])(0[1-9]|[12][0-9]|3[01])" + 
 				       "[ ]" +
 				       "([01][0-9]|[2][0-3])[0-5][0-9][0-5][0-9][Z]" +
+                                     ")|(" +
+                                       "(Sat|Sun|Mon|Tue|Wed|Thu|Fri)" + "[ ]" +
+                                       "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)" + "[ ]" +
+				       "(3[01]|[1-2][0-9]|0[1-9]|[1-9])" + "[ ]" +
+				       "(2[0-3]|[01][0-9]|[0-9])[:]([0-5][0-9])[:]([0-5][0-9])" + "[ ]" +
+				       "[0-9]{4}" +
 				     ")";
 
   /**
@@ -1136,13 +1142,23 @@ public class Utils {
                             "2014-05-06 12:32:23.999",
                             "2014-05-06 12:32:23.99999",
                             "2014-05-06 12:32:23.99999233",
+                            "2015/09/02 12:34",
+                            "2015/9/2 13:12",
+                            "2015/1/4 9:12",
                             "20140506 1232Z",
                             "20140506 123223Z",
-                            "20140506" };
+                            "20140506",
+			    "Sat Jul 23 02:16:57 2005",
+			    "Thu Jul 21 15:23:41 2005",
+			    "Thu, Jul 21 15:23:41 2005",
+			    "Tue Jul 19 00:02:03 2005"};
 
-    for (int i=0;i<timestamps.length;i++) System.out.println("Timestamp \"" + timestamps[i] + "\" => " + parseTimeStamp(timestamps[i]) + " => \"" + exactDate(parseTimeStamp(timestamps[i])) + "\"");
-
-
+    for (int i=0;i<timestamps.length;i++) 
+      System.out.println("Timestamp \"" + timestamps[i] + "\" => " + 
+                                          isTimeStamp(timestamps[i]) + " => " +
+                                          parseTimeStamp(timestamps[i]) + " => \"" + 
+					  BundlesDT.getEntityDataType(timestamps[i]) + " => " +
+                                          exactDate(parseTimeStamp(timestamps[i])) + "\"");
 
     String str = "Style%2b%252d%2bSolid";
     System.out.println("decFmURL(\"" + str + "\") = \"" + decFmURL(str) + "\"");
@@ -1230,6 +1246,18 @@ public class Utils {
     testTagNormalization("simple|grandparent::parent::child", "grandparent::parent::child|simple");
     // This one should succeed... but fails... because algorithm doesn't look for longest ancestor chain...
     testTagNormalization("a::b::c|a::b", "a::b::c");
+
+    String examples[] =  { "this\\ is\\ a\\ test",
+                           "\\ starts with a delim",
+			   "ends with a delim\\ ",
+			   "five\\ \\ \\ \\ \\ delims", 
+			   "\\ ",
+			   "\\ oneword\\ " };
+    for (int i=0;i<examples.length;i++) {
+      String tokens[] = tokenizeFileListing(examples[i]);
+      System.out.println("Example Line \"" + examples[i] + "\"");
+      for (int j=0;j<tokens.length;j++) System.out.println("  tokens[" + j + "] = \"" + tokens[j] + "\"");
+    }
   }
 
   /**
@@ -1649,6 +1677,21 @@ public class Utils {
   }
 
   /**
+   * Return the text height of a string based on the default graphics primitive.
+   *
+   *@param str string
+   *
+   *@return height of string in pixels
+   */
+  public static int txtH(String str) {
+    BufferedImage bi  = new BufferedImage(10,10,BufferedImage.TYPE_INT_RGB);
+    Graphics2D    g2d = (Graphics2D) bi.getGraphics();
+    int txt_h = txtH(g2d, str);
+    g2d.dispose();
+    return txt_h;
+  }
+
+  /**
    * Return the text height of a string based on the current graphic primitive.
    *
    *@param g2d graphic primitive
@@ -1659,6 +1702,21 @@ public class Utils {
   public static int txtH(Graphics2D g2d, String str) {
     if (str == null) str = "1";
     return (int) Math.ceil(g2d.getFont().getStringBounds(str, g2d.getFontRenderContext()).getHeight());
+  }
+
+  /**
+   * Return the text height of a string based on the default graphics primitive.
+   *
+   *@param str string
+   *
+   *@return height of string in pixels
+   */
+  public static int txtW(String str) {
+    BufferedImage bi  = new BufferedImage(10,10,BufferedImage.TYPE_INT_RGB);
+    Graphics2D    g2d = (Graphics2D) bi.getGraphics();
+    int txt_h = txtW(g2d, str);
+    g2d.dispose();
+    return txt_h;
   }
 
   /**
@@ -1855,6 +1913,20 @@ public class Utils {
    *@return shorted date string down to the minute
    */
   public static String shortDateStr(long ms) { return short_sdf.format(new Date(ms)); }
+
+  /**
+   * Date formatter for shorter date string with seconds - removes dashes, colons, etc.
+   */
+  static SimpleDateFormat short_secs_sdf; static { short_secs_sdf = new SimpleDateFormat("yyyyMMdd HHmmss"); short_secs_sdf.setTimeZone(TimeZone.getTimeZone("GMT")); }
+
+  /**
+   * Return a string that represents a shortened version down to the second
+   *
+   *@param ms time to format
+   *
+   *@return shorted date string down to the second
+   */
+  public static String shortDateSecsStr(long ms) { return short_secs_sdf.format(new Date(ms)); }
 
   /**
    * Convert a duration (not a timestamp) to a human readable aggregate.
@@ -2057,6 +2129,22 @@ public class Utils {
   }
 
   /**
+   * Determine if all characters are numbers.
+   *
+   *@param str string to check
+   *
+   *@return true if all characters only fall between 0 and 9
+   */
+  public static boolean allNumbers(String str) {
+    if (str.equals("")) return false;
+    for (int i=0;i<str.length();i++) {
+      char c = str.charAt(i);
+      if (c >= '0' && c <= '9') { } else return false;
+    }
+    return true;
+  }
+
+  /**
    * Calendar used to parse timestamp strings.  Critical that it be set to GMT!
    */
   static Calendar gmtcal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
@@ -2074,10 +2162,10 @@ public class Utils {
    *@return milliseconds since the epoch
    */
   public static long parseTimeStamp(String str) {
-    StringTokenizer st = new StringTokenizer(str, "-/\\:Tt .Zz");
+    StringTokenizer st = new StringTokenizer(str, "-/\\:Tt .Zz,");
     String tokens[] = new String[st.countTokens()]; for (int i=0;i<tokens.length;i++) tokens[i] = st.nextToken(); 
     // - convert to ints
-    int    asint[]  = new int[tokens.length]; 
+    int    asint[]  = new int[tokens.length]; boolean contains_weekdays = false;
     for (int i=0;i<tokens.length;i++) {
       if (allAlpha(tokens[i])) {
         if      (tokens[i].toLowerCase().equals("jan")) asint[i] = 1;
@@ -2092,6 +2180,16 @@ public class Utils {
         else if (tokens[i].toLowerCase().equals("oct")) asint[i] = 10;
         else if (tokens[i].toLowerCase().equals("nov")) asint[i] = 11;
         else if (tokens[i].toLowerCase().equals("dec")) asint[i] = 12;
+	else if (tokens[i].toLowerCase().equals("sa"))  { asint[i] = -1; contains_weekdays = true; }
+	else if (tokens[i].toLowerCase().equals("sat")) { asint[i] = -1; contains_weekdays = true; }
+	else if (tokens[i].toLowerCase().equals("sun")) { asint[i] = -2; contains_weekdays = true; }
+	else if (tokens[i].toLowerCase().equals("mon")) { asint[i] = -3; contains_weekdays = true; }
+	else if (tokens[i].toLowerCase().equals("ue"))  { asint[i] = -4; contains_weekdays = true; }
+	else if (tokens[i].toLowerCase().equals("tue")) { asint[i] = -4; contains_weekdays = true; }
+	else if (tokens[i].toLowerCase().equals("wed")) { asint[i] = -5; contains_weekdays = true; }
+	else if (tokens[i].toLowerCase().equals("hu"))  { asint[i] = -6; contains_weekdays = true; }
+	else if (tokens[i].toLowerCase().equals("thu")) { asint[i] = -6; contains_weekdays = true; }
+	else if (tokens[i].toLowerCase().equals("fri")) { asint[i] = -7; contains_weekdays = true; }
         else throw new RuntimeException("Cannot Convert \"" + tokens[i] + "\" To Month Integer...");
       } else asint[i] = Integer.parseInt(tokens[i]);
     }
@@ -2108,6 +2206,8 @@ public class Utils {
         yer = Integer.parseInt(tokens[0].substring(0,4)); mon = Integer.parseInt(tokens[0].substring(4,6)); day = Integer.parseInt(tokens[0].substring(6,8));
 	hor = Integer.parseInt(tokens[1].substring(0,2)); min = Integer.parseInt(tokens[1].substring(2,4)); sec = Integer.parseInt(tokens[1].substring(4,6));
       } else throw new RuntimeException("parseTimeStamp(" + str + ") -- not enough tokens");
+    } else if (contains_weekdays) {
+      mon = asint[1]; day = asint[2]; hor = asint[3]; min = asint[4]; sec = asint[5]; yer = asint[6];
     } else {
       if        (tokens[0].length() == 4) { yer = asint[0];      mon = asint[1]; day = asint[2]; 
       } else if (tokens[2].length() == 4) {
@@ -2128,6 +2228,8 @@ public class Utils {
         else throw new RuntimeException("parseTimeStamp(" + str + ") -- milliseconds incorrect");
       }
     }
+
+    // Use a calendar to properly convert into epoch millis
     gmtcal.set(yer,mon-1,day,hor,min,sec); gmtcal.set(Calendar.MILLISECOND, ms);
     return gmtcal.getTimeInMillis();
   }
@@ -3152,6 +3254,41 @@ public class Utils {
       for (int i=0;i<str.length();i++) { if (str.charAt(i) == '\"') sb.append("\"\""); else sb.append(str.charAt(i)); }
       sb.append("\""); return sb.toString();
     } else return str;
+  }
+
+  /**
+   * Tokenize a unix file listing line.  Assumes that is was generated with the following:
+   *   find . -type f -ls > somefile.txt
+   *
+   *@param s file listing line
+   *
+   *return tokens array
+   */
+  public static String[] tokenizeFileListing(String s) {
+    List<String> list    = new ArrayList<String>();
+    char         chars[] = new char[s.length()]; for (int i=0;i<s.length();i++) chars[i] = s.charAt(i);
+
+    int i = 0; StringBuffer sb = new StringBuffer();
+    while (i < chars.length) {
+      if        (chars[i] == ' ' || chars[i] == '\n' || chars[i] == '\t' || chars[i] == '\r') { // Handle a delimiter
+        if (sb.length() > 0) { list.add(sb.toString()); sb = new StringBuffer(); }
+	i++;
+      } else if (chars[i] == '\\') { // Handle an escape character
+        if ((i < (chars.length-1)) && (chars[i+1] == ' ' || chars[i+1] == '\n' || chars[i+1] == '\t' || chars[i+1] == '\r')) { // Must contain a delimiter next
+          sb.append(chars[i+1]);
+	  i++;
+	}
+        i++;
+      } else { // non delim, non escape
+        sb.append(chars[i++]);
+      }
+    }
+    if (sb.length() > 0) list.add(sb.toString());
+
+    // Convert to an array
+    String tokens[] = new String[list.size()];
+    for (i=0;i<tokens.length;i++) tokens[i] = list.get(i);
+    return tokens;
   }
 }
 

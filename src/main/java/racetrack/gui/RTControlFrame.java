@@ -1,6 +1,6 @@
 /* 
 
-Copyright 2013 David Trimm
+Copyright 2017 David Trimm
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -99,6 +99,7 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.TableModel;
 
+import racetrack.analysis.NetflowAnalytics;
 import racetrack.framework.Bundle;
 import racetrack.framework.Bundles;
 import racetrack.framework.BundlesG;
@@ -126,6 +127,7 @@ import racetrack.visualization.RTColorManager;
  *
  * V61 - Transitioned away from cached panel into manipulating records directly.
  * V62 - Added RT Table Component
+ * V70 - Begin adding analytics
  *
  *@author  D. Trimm
  *@version 1.0
@@ -248,7 +250,7 @@ public class RTControlFrame extends JFrame implements MouseListener {
    *@param rt parent GUI component
    */
   public RTControlFrame(RT rt) { 
-    super("RACETrack Control - V62");
+    super("RACETrack Control - V70");
     this.rt  = rt; 
     try { createGUI(); } catch (MalformedURLException mue) { System.err.println("MalURLE: " + mue); }
     setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -260,6 +262,13 @@ public class RTControlFrame extends JFrame implements MouseListener {
    *@return GUI parent
    */
   public RT getRTParent() { return rt; }
+
+  /**
+   * Return the JFrame for this component.  Useful for the anonymous classes.
+   *
+   *@return JFrame of this window... the window.
+   */
+  protected JFrame getJFrame() { return (JFrame) this; }
 
   /**
    * Create the GUI for the control panel.
@@ -311,7 +320,7 @@ public class RTControlFrame extends JFrame implements MouseListener {
       file_menu.add(mi = new JMenuItem("Exit")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { exit(); } } );
 
     // Preferences Menu
-    JMenu     pref_menu = new JMenu("Preferences"); menu_bar.add(pref_menu);
+    JMenu     pref_menu = new JMenu("Prefs"); menu_bar.add(pref_menu);
       String theme_strs[] = RTColorManager.getThemes();
       for (int i=0;i<theme_strs.length;i++) {
         pref_menu.add(mi = new JMenuItem(theme_strs[i]));
@@ -359,12 +368,12 @@ public class RTControlFrame extends JFrame implements MouseListener {
       bundles_menu.add(mi = new JMenuItem("Zeroize Root..."));           mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { zeroizeRoot(); } } );
 
     // Analytical Views
-    JMenu     views_menu = new JMenu("Views"); menu_bar.add(views_menu);
-      views_menu.add(mi = new JMenuItem("Link/Node Graph..."));               mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.LINKNODE,    getRTParent()); } } );
+    JMenu     views_menu = new JMenu("Viz"); menu_bar.add(views_menu);
+      views_menu.add(mi = new JMenuItem("Link/Node Graph..."));               mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.LINKNODE,       getRTParent()); } } );
       views_menu.addSeparator();
-      views_menu.add(mi = new JMenuItem("Temporal Graph..."));                mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TEMPORAL,    getRTParent()); } } );
-      views_menu.add(mi = new JMenuItem("Temporal Graph (x3)..."));           mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TEMPORALx3,  getRTParent()); } } );
-      views_menu.add(mi = new JMenuItem("Temporal Graph (Grid)..."));         mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TEMPORALg,   getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("Temporal Graph..."));                mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TEMPORAL,       getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("Temporal Graph (x3)..."));           mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TEMPORALx3,     getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("Temporal Graph (Grid)..."));         mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TEMPORALg,      getRTParent()); } } );
       views_menu.addSeparator();
       views_menu.add(mi = new JMenuItem("Histogram..."));                     mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.HISTOGRAM,      getRTParent()); } } );
       views_menu.add(mi = new JMenuItem("Histogram (s)..."));                 mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.HISTOGRAMs,     getRTParent()); } } );
@@ -379,33 +388,35 @@ public class RTControlFrame extends JFrame implements MouseListener {
         histos_menu.add(mi = new JMenuItem("Histogram (Grid)..."));           mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.HISTOGRAMg,     getRTParent()); } } );
         histos_menu.add(mi = new JMenuItem("Histogram (Grid, Simple)..."));   mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.HISTOGRAMgs,    getRTParent()); } } );
       views_menu.addSeparator();
-      views_menu.add(mi = new JMenuItem("Stacked Histogram..."));             mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.STACKHISTO,   getRTParent()); } } );
-      views_menu.add(mi = new JMenuItem("Geospatial Histogram..."));          mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.GEOHISTO,     getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("TableC..."));                        mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TABLEC,         getRTParent());  } } );
       views_menu.addSeparator();
-      views_menu.add(mi = new JMenuItem("XY Scatter..."));                    mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XY,           getRTParent()); } } );
-      views_menu.add(mi = new JMenuItem("XY Scatter (2x1)..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XYsBs,        getRTParent()); } } );
-      views_menu.add(mi = new JMenuItem("XY Scatter (1x2)..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XYtTb,        getRTParent()); } } );
-      views_menu.add(mi = new JMenuItem("XY Scatter (1x3)..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XYtTbTb,      getRTParent()); } } );
-      views_menu.add(mi = new JMenuItem("XY Scatter (1x4)..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XY1x4,        getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("XY Scatter..."));                    mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XY,             getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("XY Scatter (2x1)..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XYsBs,          getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("XY Scatter (1x2)..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XYtTb,          getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("XY Scatter (1x3)..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XYtTbTb,        getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("XY Scatter (1x4)..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XY1x4,          getRTParent()); } } );
       views_menu.addSeparator();
-      views_menu.add(mi = new JMenuItem("Reports..."));                      mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.REPORTS,      getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("Reports..."));                       mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.REPORTS,        getRTParent()); } } );
       views_menu.addSeparator();
-      views_menu.add(mi = new JMenuItem("Box Plot"));                         mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.BOXPLOT,              getRTParent()); } } );
-      views_menu.add(mi = new JMenuItem("Box Plot x2"));                      mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.BOXPLOTx2,            getRTParent()); } } );
+      views_menu.add(mi = new JMenuItem("Box Plot"));                         mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.BOXPLOT,        getRTParent()); } } );
       views_menu.addSeparator();
       JMenu specialty_menu = new JMenu("Specialty Views"); views_menu.add(specialty_menu);
-        specialty_menu.add(mi = new JMenuItem("XY Entity Scatter"));                mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XYENTITY,             getRTParent()); } } );
-        specialty_menu.add(mi = new JMenuItem("Pivot..."));                         mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.PIVOT,                getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("Event Horizon..."));                 mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.EVENT_HORIZON,        getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("Parallel Coordinates..."));          mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.PARALLEL_COORDINATES, getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("Venn Diagram..."));                  mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.VENN,                 getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("Day Matrix..."));                    mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.DAY_MATRIX,           getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("Rug Plot..."));                      mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.RUGPLOT,              getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("GPS..."));                           mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.GPS,                  getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("MDS..."));                           mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.MDS,                  getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("Edge Times..."));                    mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.EDGE_TIMES,           getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("Correlation..."));                   mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.CORRELATE,            getRTParent());  } } );
-        specialty_menu.add(mi = new JMenuItem("TableC... (Beta)"));                 mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TABLEC,               getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("Box Plot x2"));                mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.BOXPLOTx2,            getRTParent()); } } );
+        specialty_menu.add(mi = new JMenuItem("Correlation..."));             mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.CORRELATE,            getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("Day Matrix..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.DAY_MATRIX,           getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("Distribution... (Beta)"));     mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.DISTRIBUTION,         getRTParent()); } } );
+        specialty_menu.add(mi = new JMenuItem("Edge Times..."));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.EDGE_TIMES,           getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("Event Horizon..."));           mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.EVENT_HORIZON,        getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("Geospatial Histogram..."));    mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.GEOHISTO,             getRTParent()); } } );
+        specialty_menu.add(mi = new JMenuItem("GPS..."));                     mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.GPS,                  getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("MDS... (Beta)"));              mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.MDS,                  getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("Parallel Coordinates..."));    mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.PARALLEL_COORDINATES, getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("Pivot..."));                   mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.PIVOT,                getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("Rug Plot..."));                mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.RUGPLOT,              getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("Stacked Histogram..."));       mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.STACKHISTO,           getRTParent()); } } );
+        specialty_menu.add(mi = new JMenuItem("Time Series..."));             mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TIMESERIES,           getRTParent()); } } );
+        specialty_menu.add(mi = new JMenuItem("Venn Diagram..."));            mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.VENN,                 getRTParent());  } } );
+        specialty_menu.add(mi = new JMenuItem("XY Entity Scatter"));          mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.XYENTITY,             getRTParent()); } } );
       views_menu.addSeparator();
       JMenu combined_menu = new JMenu("Combined Views"); views_menu.add(combined_menu);
         combined_menu.add(mi = new JMenuItem("Temporal/Histo Combo..."));          mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.TIME_HISTO,           getRTParent()); } } );
@@ -413,7 +424,7 @@ public class RTControlFrame extends JFrame implements MouseListener {
         combined_menu.add(mi = new JMenuItem("LinkNode/Temporal/Histo Combo...")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { new RTPanelFrame(RTPanelFrame.Type.LINKNODE_TIME_HISTO,  getRTParent()); } } );
     
     // Post Processors
-    JMenu post_procs_menu = new JMenu("Transforms"); menu_bar.add(post_procs_menu);
+    JMenu post_procs_menu = new JMenu("TForms"); menu_bar.add(post_procs_menu);
     ItemListener post_procs_il = new ItemListener() {
       public void itemStateChanged(ItemEvent ie) {
         JCheckBoxMenuItem cbmi = (JCheckBoxMenuItem) ie.getSource();
@@ -434,8 +445,37 @@ public class RTControlFrame extends JFrame implements MouseListener {
       cbmi.addItemListener(post_procs_il);
     }
 
+    // Analytics menu
+    JMenu analytics_menu = new JMenu("Analytics"); menu_bar.add(analytics_menu);
+      JMenu netflow_analytics_menu;
+        analytics_menu.add(netflow_analytics_menu = new JMenu("Netflow"));
+
+          // Uniflow to biflow converter
+	  netflow_analytics_menu.add(mi = new JMenuItem("Create Biflow Tablet From Uniflow...")); 
+          mi.addActionListener(new ActionListener() { 
+            public void actionPerformed(ActionEvent ae) { 
+              Set<Bundle> set = (new NetflowAnalytics()).createBiflowFromUniflow(getJFrame(), getRTParent().getRootBundles()); 
+
+              // Finalize the new tablet and bundles
+              // Reset the transforms to force the lookups to be created
+              System.err.println("**\n** Probably Need To Include Cached Bundles...\n**");
+              Set<Bundles> bundles_set = new HashSet<Bundles>(); bundles_set.add(getRTParent().getRootBundles());
+              getRTParent().getRootBundles().getGlobals().cleanse(bundles_set);
+              // Update the dropdowns
+              getRTParent().updateBys();
+          } } );
+
+          // Server or client
+	  netflow_analytics_menu.add(mi = new JMenuItem("Server or Client")); 
+          mi.addActionListener(new ActionListener() { 
+            public void actionPerformed(ActionEvent ae) { 
+              List<EntityTag> entity_tags = (new NetflowAnalytics()).clientOrServer(getRTParent().getRootBundles());
+              getRTParent().addEntityTags(entity_tags);
+          } } );
+
     // About menu
     JMenu about_menu = new JMenu("About"); menu_bar.add(about_menu);
+
     //
     // Dump Threads For Debugging
     //
@@ -2507,7 +2547,7 @@ class RFC4180ImportDialog extends JDialog implements CSVTokenConsumer {
       globals.cleanse(bundles_set);
 
       // Update the GUI with new field information
-      parent.updateBys();
+      parent.getRTParent().updatePanelsForNewBundles(importer.getBundlesAdded());
     } catch (IOException ioe) {
       JOptionPane.showMessageDialog(this, "Error Parsing File: " + ioe, "File Error", JOptionPane.ERROR_MESSAGE);
       System.err.println("IOException: " + ioe);

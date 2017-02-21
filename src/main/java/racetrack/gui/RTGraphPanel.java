@@ -130,6 +130,7 @@ import racetrack.util.Utils;
 import racetrack.visualization.ColorScale;
 import racetrack.visualization.RTColorManager;
 import racetrack.visualization.ShapeFile;
+import racetrack.visualization.TreeMap;
 
 
 /**
@@ -291,7 +292,15 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
   /**
    * Menu item for adding header relationships (with links to their data types)
    */
-			       add_header_relationships_types_mi;
+			       add_header_relationships_types_mi,
+  /**
+   * Menu item to add header star relationships (tablet headers) as a graph
+   */
+                               add_header_relationships_stars_mi, 
+  /**
+   * Menu item for adding header star relationships (with links to their data types)
+   */
+			       add_header_relationships_types_stars_mi;
 
   /**
    * String for no nodes
@@ -429,8 +438,10 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
     getRTPopupMenu().add(add_relationship_mi               = new JMenuItem("Add Edge Relationship..."));
     getRTPopupMenu().add(delete_relationship_mi            = new JMenuItem("Delete Edge Relationship..."));
     JMenu datascience_menu = new JMenu("Data Science"); getRTPopupMenu().add(datascience_menu);
-      datascience_menu.add(add_header_relationships_mi       = new JMenuItem("Add Header Relationships"));
-      datascience_menu.add(add_header_relationships_types_mi = new JMenuItem("Add Header Relationships (Types)"));
+      datascience_menu.add(add_header_relationships_mi             = new JMenuItem("Add Header Relationships"));
+      datascience_menu.add(add_header_relationships_types_mi       = new JMenuItem("Add Header Relationships (Types)"));
+      datascience_menu.add(add_header_relationships_stars_mi       = new JMenuItem("Add Header Star Relationships"));
+      datascience_menu.add(add_header_relationships_types_stars_mi = new JMenuItem("Add Header Star Relationships (Types)"));
     common_relationships_menu = new JMenu("Common Relationships"); getRTPopupMenu().add(common_relationships_menu); 
       fillCommonRelationshipsMenu();
 
@@ -482,6 +493,8 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
     mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { temporalLayout(); } } );
     layouts_menu.add(mi = new JMenuItem("Collapse Blocks"));
     mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { collapseBlocks(); } } );
+    layouts_menu.add(mi = new JMenuItem("Node Color TreeMap Layout"));
+    mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { nodeColorTreeMapLayout(); } } );
 
     // - Specialized layouts
     layouts_menu.addSeparator();
@@ -564,12 +577,14 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
     getRTPopupMenu().add(vertex_placement_heatmap_cbmi = new JCheckBoxMenuItem("Vertex Placement Heatmap (Experimental)", false));
 
     // - Add growth options
-    menu = new JMenu("Expansion");
+    menu = new JMenu("Expansion/Filter");
     getRTPopupMenu().addSeparator();
     getRTPopupMenu().add(menu);
       menu.add(mi = new JMenuItem("Add All Bundles On Visible Links"));         mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { addAllOnVisibleLinks();    } } );
       menu.add(mi = new JMenuItem("Make 1-Hop Links Visible"));                 mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { makeOneHopsVisible(false); } } );
       menu.add(mi = new JMenuItem("Make 1-Hop Links Visible (Directional)"));   mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { makeOneHopsVisible(true);  } } );
+      menu.addSeparator();
+      menu.add(mi = new JMenuItem("Only Keep Bidirectional Links"));            mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { filterToBidirectionalLinks(); } } );
 
     // - Selection
     menu = new JMenu("Select By"); getRTPopupMenu().add(menu);
@@ -639,10 +654,12 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
     add("South", panel);
 
     // Listeners
-    add_relationship_mi.addActionListener               (new ActionListener() { public void actionPerformed(ActionEvent ae) { addRelationshipDialog();       } } );
-    delete_relationship_mi.addActionListener            (new ActionListener() { public void actionPerformed(ActionEvent ae) { deleteRelationshipDialog();    } } );
-    add_header_relationships_mi.addActionListener       (new ActionListener() { public void actionPerformed(ActionEvent ae) { addHeaderRelationships(false); } } );
-    add_header_relationships_types_mi.addActionListener (new ActionListener() { public void actionPerformed(ActionEvent ae) { addHeaderRelationships(true);  } } );
+    add_relationship_mi.addActionListener                     (new ActionListener() { public void actionPerformed(ActionEvent ae) { addRelationshipDialog();            } } );
+    delete_relationship_mi.addActionListener                  (new ActionListener() { public void actionPerformed(ActionEvent ae) { deleteRelationshipDialog();         } } );
+    add_header_relationships_mi.addActionListener             (new ActionListener() { public void actionPerformed(ActionEvent ae) { addHeaderRelationships(false);      } } );
+    add_header_relationships_types_mi.addActionListener       (new ActionListener() { public void actionPerformed(ActionEvent ae) { addHeaderRelationships(true);       } } );
+    add_header_relationships_stars_mi.addActionListener       (new ActionListener() { public void actionPerformed(ActionEvent ae) { addHeaderRelationshipsStars(false); } } );
+    add_header_relationships_types_stars_mi.addActionListener (new ActionListener() { public void actionPerformed(ActionEvent ae) { addHeaderRelationshipsStars(true);  } } );
     defaultListener(link_curves_cbmi);
     defaultListener(link_trans_cbmi);
     defaultListener(arrows_cbmi);
@@ -1524,6 +1541,26 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
   }
 
   /**
+   * Filter the visible records to only those links/edges that have both nodes as sources.
+   */
+  public void filterToBidirectionalLinks() {
+    RTGraphComponent.RenderContext myrc = (RTGraphComponent.RenderContext) getRTComponent().rc; if (myrc == null) return;
+
+    // Get the visible links, extract the direction, create the reverse direction -- if that exists, add those records to keepers
+    Iterator<String> it = myrc.graphedgeref_to_link.keySet().iterator(); Set<Bundle> to_keep = new HashSet<Bundle>();
+    while (it.hasNext()) {
+      String graph_edge_ref = it.next(); String line_ref = myrc.graphedgeref_to_link.get(graph_edge_ref);
+      int fm_i = digraph.linkRefFm(graph_edge_ref);
+      int to_i = digraph.linkRefTo(graph_edge_ref);
+      String other_dir = digraph.getLinkRef(to_i,fm_i);
+      if (myrc.graphedgeref_to_link.containsKey(other_dir)) { to_keep.addAll(myrc.link_counter_context.getBundles(line_ref)); }
+    }
+
+    // Add the no mapping set and push it to the RTParent
+    to_keep.addAll(getRTComponent().getNoMappingSet()); getRTParent().push(getRTParent().getRootBundles().subset(to_keep));
+  }
+
+  /**
    * Expand the graph (non-time specific) by one hop.  If the digraph option is set, only
    * expand using the directional graph.
    *
@@ -1900,6 +1937,20 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
   }
 
   /**
+   * Layout the nodes by their color using a treemap.  Assumes that the color option is not trivial.
+   */
+  public void nodeColorTreeMapLayout() {
+    // Get a valid render context
+    RTGraphComponent.RenderContext myrc = (RTGraphComponent.RenderContext) (getRTComponent().getRTRenderContext()); if (myrc == null) return;
+
+    // Check for a valid color setting
+    NodeColor node_color = getNodeColor();
+    if (node_color == NodeColor.VARY || node_color == NodeColor.LABEL) {
+      myrc.nodeColorTreeMapLayout(node_color);
+    } else System.err.println("RTGraphPanel.nodeColorTreeMapLayout() - Only works with VARY or LABEL");
+  }
+
+  /**
    * Collapse blocks of the graph (based on the biconnected components) into single aggregate
    * nodes.
    */
@@ -2209,6 +2260,85 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
     String  to_hdr = Utils.decFmURL(st.nextToken()), to_ico = Utils.decFmURL(st.nextToken()); boolean to_typed  = st.nextToken().toLowerCase().equals("true");
     String  style  = Utils.decFmURL(st.nextToken());                                          boolean ignore_ns = st.nextToken().toLowerCase().equals("true");
     return ignore_ns; }
+
+  /**
+   * Add nodes that show how headers connect with one another.
+   *
+   *@param include_types if true, include the header types as part of the graph
+   */
+  public void addHeaderRelationshipsStars(boolean include_types) { 
+    Bundles bs = getRTParent().getRootBundles();
+    Iterator<Tablet> it_tab = bs.tabletIterator();
+    while (it_tab.hasNext()) {
+      Tablet tablet   = it_tab.next();
+      int    fields[] = tablet.getFields();
+
+      // Add the tablet node
+      String tablet_str = (new KeyMaker(tablet, KeyMaker.TABLET_SEP_STR).stringKeys(tablet.bundleIterator().next()))[0];
+      if (entity_to_shape.containsKey(tablet_str) == false) entity_to_shape.put(tablet_str, Utils.Symbol.SQUARE); 
+      if (entity_to_wxy.containsKey(tablet_str) == false) { entity_to_wxy.put(tablet_str, new Point2D.Double(Math.random()*2 - 1, Math.random()*2 - 1)); transform(tablet_str); }
+      graph.addNode(tablet_str); digraph.addNode(tablet_str);
+
+      // Only keep the non-null fields
+      List<Integer> al = new ArrayList<Integer>(); for (int i=0;i<fields.length;i++) if (fields[i] != -1) al.add(i);
+      fields = new int[al.size()]; for (int i=0;i<fields.length;i++) fields[i] = al.get(i);
+
+      // Go through the valid fields now
+      for (int i=0;i<fields.length;i++) {
+        int    hdr_i     = fields[i]; String hdr_i_str = bs.getGlobals().fieldHeader(hdr_i);
+
+        // Put the symbol
+        if (entity_to_shape.containsKey(hdr_i_str) == false) entity_to_shape.put(hdr_i_str, Utils.Symbol.CIRCLE); 
+
+	// Make the world location
+	if (entity_to_wxy.containsKey(hdr_i_str) == false) { entity_to_wxy.put(hdr_i_str, new Point2D.Double(Math.random()*2 - 1, Math.random()*2 - 1)); transform(hdr_i_str); }
+
+	// Figure out the weights
+	graph.addNode(hdr_i_str); digraph.addNode(hdr_i_str);
+	double g_w  =   graph.getConnectionWeight(graph.getEntityIndex(hdr_i_str), graph.getEntityIndex(tablet_str)),
+	       dg_w = digraph.getConnectionWeight(graph.getEntityIndex(hdr_i_str), graph.getEntityIndex(tablet_str));
+        if (Double.isInfinite(g_w)) g_w = 0.0; if (Double.isInfinite(dg_w)) dg_w = 0.0;
+        // Add the edges
+	  graph.addNeighbor(hdr_i_str,  tablet_str, g_w  + tablet.size());
+	  graph.addNeighbor(tablet_str, hdr_i_str,  g_w  + tablet.size());
+	digraph.addNeighbor(hdr_i_str,  tablet_str, dg_w + tablet.size());
+	// Associate the bundles with the edge
+	Iterator<Bundle> it_bun = tablet.bundleIterator();
+	while (it_bun.hasNext()) {
+	  Bundle bundle = it_bun.next();
+	    graph.addLinkReference(  graph.getEntityIndex(hdr_i_str),   graph.getEntityIndex(tablet_str), bundle);
+	    graph.addLinkReference(  graph.getEntityIndex(tablet_str),  graph.getEntityIndex(hdr_i_str),  bundle);
+	  digraph.addLinkReference(digraph.getEntityIndex(hdr_i_str), digraph.getEntityIndex(tablet_str), bundle);
+          // Include the data types if specified
+	  if (include_types) {
+            BundlesDT.DT datatype = BundlesDT.getEntityDataType(bundle.toString(hdr_i));
+            // System.err.println("Including Type For \"" + bundle.toString(hdr_i) + "\" ==> " + datatype);
+	    if (datatype != null) {
+                graph.addNode("" + datatype);  entity_to_shape.put("" + datatype, Utils.Symbol.TRIANGLE);
+	      digraph.addNode("" + datatype);  
+	      if (entity_to_wxy.containsKey("" + datatype) == false) {
+	        entity_to_wxy.put("" + datatype, new Point2D.Double(Math.random()*2 - 1, Math.random()*2 - 1)); 
+		transform("" + datatype);
+	      }
+	      g_w  = graph.getConnectionWeight(graph.getEntityIndex(hdr_i_str), graph.getEntityIndex("" + datatype));
+	      dg_w = graph.getConnectionWeight(graph.getEntityIndex(hdr_i_str), graph.getEntityIndex("" + datatype));
+              if (Double.isInfinite(g_w)) g_w = 0.0; if (Double.isInfinite(dg_w)) dg_w = 0.0;
+	        graph.addNeighbor("" + datatype, hdr_i_str,      g_w + 1);
+	        graph.addNeighbor(hdr_i_str,     "" + datatype,  g_w + 1);
+	      digraph.addNeighbor(hdr_i_str,     "" + datatype, dg_w + 1);
+	        graph.addLinkReference(  graph.getEntityIndex(hdr_i_str),      graph.getEntityIndex("" + datatype), bundle);
+	        graph.addLinkReference(  graph.getEntityIndex("" + datatype),  graph.getEntityIndex(hdr_i_str),     bundle);
+	      digraph.addLinkReference(digraph.getEntityIndex(hdr_i_str),    digraph.getEntityIndex("" + datatype), bundle);
+              digraph.addLinkStyle(digraph.getEntityIndex(hdr_i_str), digraph.getEntityIndex("" + datatype), STYLE_DOTTED_STR);
+	    }
+	  }
+	}
+	// Add the style
+        digraph.addLinkStyle(digraph.getEntityIndex(hdr_i_str), digraph.getEntityIndex(tablet_str), STYLE_SOLID_STR);
+      }
+    }
+    getRTComponent().render();
+  }
 
   /**
    * Add nodes that show how headers connect with one another.
@@ -3518,6 +3648,60 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
       }
     }
 
+    /**
+     * Function key saves for the coordinates
+     */
+    Map<Integer,Map<String,Point2D>> function_key_saves = new HashMap<Integer,Map<String,Point2D>>();
+
+    /**
+     * Save the layout based on a function key press.  Shift and control will be used as follows:
+     * - shift | control | results
+     * - no    | no      | save the layout
+     * - yes   | *       | restore the layout
+     * - no    | yes     | delete layout copy
+     *
+     *@param key   key to save/restore the layout from
+     *@param shft  indicates layout should be restored
+     *@param ctrl  indicates layout should be erased
+     */
+    protected void saveLayoutByFunctionKey(int fn_key, boolean shft, boolean ctrl) {
+      if        (shft && function_key_saves.containsKey(fn_key)) {
+        //
+	// Restore the save
+	//
+	System.err.println("RTGraphPanel: Restoring Layout From KeyCode " + fn_key);
+	Iterator<String> it = function_key_saves.get(fn_key).keySet().iterator();
+	while (it.hasNext()) {
+	  String k = it.next();
+	  if (entity_to_wxy.keySet().contains(k)) entity_to_wxy.put(k, function_key_saves.get(fn_key).get(k));
+	}
+        RenderContext myrc = (RenderContext) rc;
+        transform(); if (myrc != null) getRTComponent().render();
+
+      } else if (ctrl && function_key_saves.containsKey(fn_key)) { 
+        //
+	// Remove the previously saved coordinates
+	//
+	System.err.println("RTGraphPanel: Deleting Layout From KeyCode " + fn_key);
+        function_key_saves.remove(fn_key);
+
+      } else                                                  {
+        //
+	// Save off the coordinates
+	//
+	System.err.println("RTGraphPanel:  Saving Layout To KeyCode " + fn_key);
+        function_key_saves.put(fn_key, new HashMap<String,Point2D>());
+	Iterator<String> it = entity_to_wxy.keySet().iterator(); 
+	while (it.hasNext()) {
+	  String k = it.next();
+	  function_key_saves.get(fn_key).put(k, entity_to_wxy.get(k));
+	}
+      }
+    }
+
+  /**
+   *
+   */
   public void mousePressed    (MouseEvent me) { if (mode() == UI_MODE.FILTER || me.getButton() == MouseEvent.BUTTON3) super.mousePressed(me);  
                                                 if (mode() == UI_MODE.EDIT   || ui_inter != UI_INTERACTION.NONE || me.getButton() == MouseEvent.BUTTON2) genericMouse(ME_ENUM.PRESSED,  me); }
   public void mouseReleased   (MouseEvent me) { if (mode() == UI_MODE.FILTER || me.getButton() == MouseEvent.BUTTON3) super.mouseReleased(me); 
@@ -3575,6 +3759,11 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
                                                 else if (ke.getKeyCode() == KeyEvent.VK_RIGHT)   shiftSelection( mover, 0);
 						else if (ke.getKeyCode() == KeyEvent.VK_W)       makeOneHopsVisible(last_shft_down);
 						else if (ke.getKeyCode() == KeyEvent.VK_H)       { draw_help = !draw_help; repaint(); }
+                                                else if (ke.getKeyCode() == KeyEvent.VK_F2 ||
+						         ke.getKeyCode() == KeyEvent.VK_F3 ||
+						         ke.getKeyCode() == KeyEvent.VK_F4 ||
+						         ke.getKeyCode() == KeyEvent.VK_F5)      { saveLayoutByFunctionKey(ke.getKeyCode(), last_shft_down, last_ctrl_down); }
+
                                               }
   public void keyReleased     (KeyEvent   ke) { super.keyReleased(ke);  
                                                 if      (ke.getKeyCode() == KeyEvent.VK_G) grid_mode = false;
@@ -4832,6 +5021,7 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
     base_y = drawKeyCombo(g2d, base_x, base_y, "Cursor Keys", "Shift Selected Nodes");
     base_y = drawKeyCombo(g2d, base_x, base_y, "< >",         "Rotate Selected Nodes", "15 Degs", "90 Degs",  "");
     base_y = drawKeyCombo(g2d, base_x, base_y, "{ }",         "Scale Selected Nodes",  "More",    "Even More", "");
+    base_y = drawKeyCombo(g2d, base_x, base_y, "F[2-5]",      "Save Layout To Fx",     "Restore", "Delete",    "Restore");
   }
 
   /**
@@ -6150,7 +6340,65 @@ public class RTGraphPanel extends RTPanel implements WorldToScreenTransform {
         g2d.fillOval(x-w+6, y-h+6, 2*w-12,2*h-12);
 	return new Ellipse2D.Double(x - 8, y - 8, 2*w, 2*h);
       }
+      
+      /**
+       * Layout the nodes based on their colors using a treemap.
+       *
+       *@param node_color_for_layout node color for layout
+       */
+      public void nodeColorTreeMapLayout(NodeColor node_color_for_layout) {
+	// Determine the correct colorer to use
+        NodeColorer colorer = null;
+	switch (node_color_for_layout) {
+	  case VARY:      colorer = new VaryNodeColorer();   break;
+	  case LABEL:     colorer = new LabelNodeColorer();  break;
+	  default:        System.err.println("nodeColorTreeMapLayout() - only works for VARY or LABEL");
+	}
 
+	// If we have a valid colorer, collate nodes by the color into a map
+	if (colorer != null) {
+	  // Map for color to nodes sets
+          Map<Color,Set<String>> map = new HashMap<Color,Set<String>>();
+
+	  // Iterate over the nodes to put them into the correct color bins
+	  Iterator<String> it = node_counter_context.binIterator();
+	  while (it.hasNext()) {
+	    String node_coord_str = it.next();
+	    Color  color          = colorer.nodeColor(node_coord_str);
+	    if (map.containsKey(color) == false) map.put(color, new HashSet<String>());
+	    map.get(color).add(node_coord_str);
+	  }
+
+	  // Run the treemap algorithm
+	  TreeMap treemap = new TreeMap(map);
+          Map<Color,Rectangle2D> layout  = treemap.squarifiedTileMapping();
+          Iterator<Color> itc = layout.keySet().iterator(); while (itc.hasNext()) {
+            Color color = itc.next(); Set<String> set = map.get(color); Rectangle2D rect = layout.get(color);
+            // Determine the adjusted rectangle to place them in
+            double adj_x = rect.getX() + 0.1 * rect.getWidth(),
+                   adj_y = rect.getY() + 0.1 * rect.getHeight(),
+                   adj_w = rect.getWidth()  * 0.80,
+                   adj_h = rect.getHeight() * 0.80;
+
+            // Determine the increments
+            double x_count = Math.ceil(set.size() / adj_h);
+            double y_count = Math.ceil(set.size() / x_count);
+            double inc_x   = adj_w / x_count,
+                   inc_y   = adj_h / y_count;
+
+            // Place the nodes
+            Iterator<String> its = set.iterator();
+            double x = adj_x, y = adj_y;
+            while (its.hasNext()) {
+              String node_coord_str = its.next(); Iterator<String> it_nodes = node_coord_set.get(node_coord_str).iterator(); while (it_nodes.hasNext()) {
+                entity_to_wxy.put(it_nodes.next(), new Point2D.Double(x,y));
+              }
+              x += inc_x; if (x > adj_x+adj_w) { x = adj_x; y += inc_y; }
+            }
+          }
+          transform(); zoomToFit(); getRTComponent().render();
+	}
+      }
 
       /**
        * Label maker for nodes

@@ -219,7 +219,8 @@ public class KeyMaker {
   /**
    * Strings for time-based keys
    */
-  public static final String BY_SECOND_STR                      = "|Tm|Sec|",
+  public static final String BY_TIME_PREFIX_STR                 = "|Tm|",
+                             BY_SECOND_STR                      = "|Tm|Sec|",
                              BY_MILLIS_STR                      = "|Tm|Millis|",
                              BY_MINUTE_SECOND_STR               = "|Tm|Min/Sec|",
                              BY_MINUTE_STR                      = "|Tm|Min|",

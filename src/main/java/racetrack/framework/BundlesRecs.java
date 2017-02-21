@@ -505,8 +505,8 @@ public class BundlesRecs extends Bundles {
         sb.append(globals.fieldHeader(sorted_fld_is[i]) + "=" + Utils.encToURL(toString(sorted_fld_is[i])));
         if (i < (sorted_fld_is.length-1)) sb.append(BundlesDT.DELIM);
       }
-      if (hasTime())     sb.append(BundlesDT.DELIM); sb.append(Utils.exactDate(ts0()));
-      if (hasDuration()) sb.append(BundlesDT.DELIM); sb.append(Utils.exactDate(ts1()));
+      if (hasTime())     { sb.append(BundlesDT.DELIM); sb.append(Utils.exactDate(ts0())); }
+      if (hasDuration()) { sb.append(BundlesDT.DELIM); sb.append(Utils.exactDate(ts1())); }
       return sb.toString();
     }
   }

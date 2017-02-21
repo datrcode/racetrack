@@ -72,7 +72,7 @@ public class RTColorManager {
   /**
    * String representing the current theme
    */
-  private static String current_theme = LIGHT_THEME_STR;
+  private static String current_theme = DARK_THEME_STR;
 
   /**
    * List of available themes
@@ -268,6 +268,7 @@ class LightTheme implements Theme {
     setColor("label", "major",       Color.black);
     setColor("label", "minor",       Color.darkGray);
     setColor("label", "performance", Color.lightGray);
+    setColor("label", "header",      new Color(0x001f00bd));
 
     BrewerColorScale date_labels_bcs = new BrewerColorScale(BrewerColorScale.BrewerType.SEQUENTIAL,5);
     setColor("label", "year",        date_labels_bcs.atIndex(0));
@@ -289,9 +290,10 @@ class LightTheme implements Theme {
     //
     // Background color
     //
-    setColor("background", "default", Color.white);
-    setColor("background", "reverse", Color.black);
-    setColor("background", "nearbg",  Color.lightGray);
+    setColor("background", "default",  Color.white);
+    setColor("background", "reverse",  Color.black);
+    setColor("background", "nearbg",   Color.lightGray);
+    setColor("background", "almostbg", new Color(0.9f, 0.9f, 0.9f));
 
     //
     // Annotations
@@ -443,6 +445,7 @@ class DarkTheme implements Theme {
     setColor("label", "major",       Color.lightGray);
     setColor("label", "minor",       Color.darkGray);
     setColor("label", "performance", Color.darkGray);
+    setColor("label", "header",      Color.yellow);
 
     BrewerColorScale date_labels_bcs = new BrewerColorScale(BrewerColorScale.BrewerType.SEQUENTIAL,5);
     setColor("label", "year",        date_labels_bcs.atIndex(0));
@@ -467,6 +470,7 @@ class DarkTheme implements Theme {
     setColor("background", "default", Color.black);
     setColor("background", "reverse", Color.white);
     setColor("background", "nearbg",  Color.darkGray);
+    setColor("background", "almostbg", new Color(0.18f, 0.18f, 0.18f));
 
     //
     // Annotations

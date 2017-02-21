@@ -329,8 +329,12 @@ public class BundlesG {
 	  switch (datatype) {
 	    case IPv4:     ent_2_i.put(entity, Utils.ipAddrToInt(entity));                                         break;
 	    case IPv4CIDR: ent_2_i.put(entity, Utils.ipAddrToInt((new StringTokenizer(entity, "/")).nextToken())); break;
-	    case INTEGER:  ent_2_i.put(entity, Integer.parseInt(entity));                                          break;
-            case FLOAT:    ent_2_i.put(entity, Float.floatToIntBits(Float.parseFloat(entity)));                    break;
+	    case INTEGER:  ent_2_i.put(entity, Integer.parseInt(entity)); 
+	                   if (warn_on_float_conflict) checkForFloatConflict(fld_i);
+	                   break;
+            case FLOAT:    ent_2_i.put(entity, Float.floatToIntBits(Float.parseFloat(entity))); 
+	                   if (warn_on_float_conflict) checkForFloatConflict(fld_i);
+                           break;
 	    case DOMAIN:   ent_2_i.put(entity, Utils.ipAddrToInt("127.0.0.2") + dt_count_lu.get(datatype)); // Put Domains In Unused IPv4 Space
 	                   dt_count_lu.put(datatype, dt_count_lu.get(datatype) + 1);
 			   break;
@@ -363,6 +367,29 @@ public class BundlesG {
       }
     }
   }
+
+  /**
+   * Check for the float / integer mixture problem.
+   *
+   *@param fld_i index of field
+   */
+  private void checkForFloatConflict(int fld_i) {
+    if (fld_i == -1) return;
+    Set<BundlesDT.DT> dts = getFieldDataTypes(fld_i); 
+    if (dts.contains(BundlesDT.DT.FLOAT) && dts.contains(BundlesDT.DT.INTEGER) && warn_on_float_conflict) {
+      warn_on_float_conflict = false;
+      System.err.println("**\n** For Field \"" + fieldHeader(fld_i) + "\" -- mixed Integers and Floats... issues with parsing...\n**");
+    }
+  }
+
+  /**
+   * Flag that indicates whether we've warned the user on the conflicts of mixing floats and integers in the same field.
+   * The problem is that the application assigns a corresponding integer value for all strings... for a regex'ed float value
+   * that integer is the floatToIntBits result... however, for an integer, the stored integer is the integer itself.  The
+   * problem is that certaining parts of the application (RTMDSPanel...  DistEq) convert the floats back using the 
+   * intBitsToFloat call and for any integers stored incorrectly, the application will have a bad result.
+   */
+  private boolean warn_on_float_conflict = true;
 
   /**
    * Convert a string to a corresponding entity.

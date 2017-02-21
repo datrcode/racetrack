@@ -58,10 +58,12 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -92,9 +94,9 @@ public class RTTableCPanel extends RTPanel {
   JCheckBoxMenuItem header_cbmi,
 
   /**
-   * Draw the header extras (# of items in the list, total for the set, etc.)
+   * Limit the width of all of the columns to a specific amount - helps with columns that may fill up the screen
    */
-                    header_extras_cbmi,
+                    limit_width_to_x_cbmi,
 
   /**
    * Highlight tagged entities within the cells
@@ -127,15 +129,10 @@ public class RTTableCPanel extends RTPanel {
                        interact_none_rbmi,
 
   /**
-   * Show the full stats for columns/rows (probably columns... haven't thought this all the way through)
-   */
-                       interact_stats_rbmi,
-
-  /**
    * Interact by showing the local graph for identifiers -- will only work for specific fields...
-   * - from  => to
-   * - sip   => dip
-   * - srcip => dstip
+   * - from  == to
+   * - sip   == dip
+   * - srcip == dstip
    */
                        interact_graph_rbmi;
 
@@ -163,8 +160,8 @@ public class RTTableCPanel extends RTPanel {
 
     // - General rendering options
     getRTPopupMenu().add(header_cbmi            = new JCheckBoxMenuItem("Header", true));
-    getRTPopupMenu().add(header_extras_cbmi     = new JCheckBoxMenuItem("Header Extras"));
     getRTPopupMenu().add(highlight_tagged_cbmi  = new JCheckBoxMenuItem("Highlight Tagged"));
+    getRTPopupMenu().add(limit_width_to_x_cbmi  = new JCheckBoxMenuItem("Limit Column Width"));
 
     getRTPopupMenu().addSeparator();
 
@@ -180,7 +177,6 @@ public class RTTableCPanel extends RTPanel {
     // - Interactivity choices
     bg = new ButtonGroup();
     getRTPopupMenu().add(interact_none_rbmi   = new JRadioButtonMenuItem("No Interact", true)); bg.add(interact_none_rbmi);
-    getRTPopupMenu().add(interact_stats_rbmi  = new JRadioButtonMenuItem("Stats"));             bg.add(interact_stats_rbmi);
     getRTPopupMenu().add(interact_graph_rbmi  = new JRadioButtonMenuItem("Local Graph"));       bg.add(interact_graph_rbmi);
 
     getRTPopupMenu().addSeparator();
@@ -189,7 +185,9 @@ public class RTTableCPanel extends RTPanel {
     getRTPopupMenu().add(mi = new JMenuItem("Clear Sorts")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { clearSorts(); } } );
 
     // - Column manipulation
-    getRTPopupMenu().add(mi = new JMenuItem("Remove Column")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { ((TableCComponent) getRTComponent()).removeColumn(); } } );
+    getRTPopupMenu().add(mi = new JMenuItem("Remove Column"));        mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { ((TableCComponent) getRTComponent()).removeColumn();   } } );
+    getRTPopupMenu().add(mi = new JMenuItem("Add Column Before...")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { ((TableCComponent) getRTComponent()).addColumn(true);  } } );
+    getRTPopupMenu().add(mi = new JMenuItem("Add Column After..."));  mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { ((TableCComponent) getRTComponent()).addColumn(false); } } );
 
     // Fill in the combobox
     updateBys();
@@ -197,8 +195,8 @@ public class RTTableCPanel extends RTPanel {
     // Add the listeners
     // - Popup menu listeners
     defaultListener(header_cbmi);
-    defaultListener(header_extras_cbmi);
     defaultListener(highlight_tagged_cbmi);
+    defaultListener(limit_width_to_x_cbmi);
 
     defaultListener(color_none_rbmi);
     defaultListener(color_rows_rbmi);
@@ -208,7 +206,8 @@ public class RTTableCPanel extends RTPanel {
     // - Tablet selection listener
     tablet_cb.addItemListener(new ItemListener() {
       public void itemStateChanged(ItemEvent ie) {
-        ((TableCComponent) getRTComponent()).configureForTablet((String) tablet_cb.getSelectedItem());
+        String tablet_str = (String) tablet_cb.getSelectedItem();
+        if (tablet_str != null) ((TableCComponent) getRTComponent()).configureForTablet(tablet_str);
       }
     } );
   }
@@ -226,20 +225,20 @@ public class RTTableCPanel extends RTPanel {
    *@param b render header flag
    */
   public void    renderHeader(boolean b)       { header_cbmi.setSelected(b);      }
+  
+  /**
+   * Return the flag indicating that the column widths should be limited.
+   *
+   *@return limit column width flag
+   */
+  public boolean limitWidthToX()                 { return limit_width_to_x_cbmi.isSelected(); }
 
   /**
-   * Return the flag indicating that the header extras should be rendered.
+   * Set the flag indicating that the column widths should be limited.
    *
-   *@return render header extras flag
+   *@param b limit column width flag
    */
-  public boolean renderHeaderExtras()          { return header_extras_cbmi.isSelected(); }
-
-  /**
-   * Set the flag indicating that the header extras should be rendered.
-   *
-   *@param b render header extras flag
-   */
-  public void    renderHeaderExtras(boolean b) { header_extras_cbmi.setSelected(b);      }
+  public void    limitWidthToX(boolean b)       { limit_width_to_x_cbmi.setSelected(b);      }
 
   /**
    * Return the flag indicating that if tagged entities should be highlighted
@@ -301,7 +300,7 @@ public class RTTableCPanel extends RTPanel {
   /**
    * Interactivity enumerations
    */
-  enum Interactivity { NONE, STATS, GRAPH };
+  enum Interactivity { NONE, GRAPH };
 
   /**
    * Return the interactivity setting.
@@ -310,7 +309,6 @@ public class RTTableCPanel extends RTPanel {
    */
   public Interactivity interactivity() { 
     if      (interact_none_rbmi.isSelected())  return Interactivity.NONE;
-    else if (interact_stats_rbmi.isSelected()) return Interactivity.STATS;
     else if (interact_graph_rbmi.isSelected()) return Interactivity.GRAPH;
     else                                       return Interactivity.NONE;
   }
@@ -323,7 +321,6 @@ public class RTTableCPanel extends RTPanel {
   public void interactivity(Interactivity inter) {
     switch (inter) {
       case NONE:   interact_none_rbmi.setSelected(true);  break;
-      case STATS:  interact_stats_rbmi.setSelected(true); break;
       case GRAPH:  interact_graph_rbmi.setSelected(true); break;
       default:     interact_none_rbmi.setSelected(true);  break;
     }
@@ -336,7 +333,6 @@ public class RTTableCPanel extends RTPanel {
    */
   public void interactivity(String str) {
     if      (str.equals("" + Interactivity.NONE))  interactivity(Interactivity.NONE); 
-    else if (str.equals("" + Interactivity.STATS)) interactivity(Interactivity.STATS);
     else if (str.equals("" + Interactivity.GRAPH)) interactivity(Interactivity.GRAPH);
     else                                           interactivity(Interactivity.NONE);
   }
@@ -356,8 +352,8 @@ public class RTTableCPanel extends RTPanel {
   public String getConfig() { return "RTTableCPanel"                                                              + BundlesDT.DELIM +
                                      "tablet="           + (Utils.encToURL((String) tablet_cb.getSelectedItem())) + BundlesDT.DELIM +
                                      "header="           + (renderHeader()       ? "true" : "false")              + BundlesDT.DELIM +
-				     "headerextras="     + (renderHeaderExtras() ? "true" : "false")              + BundlesDT.DELIM +
 				     "highlighttag="     + (highlightTagged()    ? "true" : "false")              + BundlesDT.DELIM +
+				     "limitwidth="       + (limitWidthToX()      ? "true" : "false")              + BundlesDT.DELIM +
 				     "coloroption="      + (colorOption())                                        + BundlesDT.DELIM +
 				     "interact="         + (interactivity())                                      + BundlesDT.DELIM +
                                      "sort1="            + (sort_1 == null ? "null" : Utils.encToURL(sort_1))     + BundlesDT.DELIM +
@@ -365,7 +361,8 @@ public class RTTableCPanel extends RTPanel {
                                      "sort2="            + (sort_2 == null ? "null" : Utils.encToURL(sort_2))     + BundlesDT.DELIM +
                                      "sort2inv="         + sort_2_inv                                             + BundlesDT.DELIM +
                                      "sort3="            + (sort_3 == null ? "null" : Utils.encToURL(sort_3))     + BundlesDT.DELIM +
-                                     "sort3inv="         + sort_3_inv; }
+                                     "sort3inv="         + sort_3_inv                                             + BundlesDT.DELIM +
+				     "visflds="          + Utils.encToURL(((TableCComponent) getRTComponent()).getVisibleFields()); }
 
   /**
    * Set the configuration for this panel.  Could be used to recall bookmarks.
@@ -381,8 +378,8 @@ public class RTTableCPanel extends RTPanel {
 
       if      (type.equals("tablet"))       tablet_cb.setSelectedItem(Utils.decFmURL(value)); 
       else if (type.equals("header"))       renderHeader(value.toLowerCase().equals("true"));
-      else if (type.equals("headerextras")) renderHeaderExtras(value.toLowerCase().equals("true"));
       else if (type.equals("highlighttag")) highlightTagged(value.toLowerCase().equals("true"));
+      else if (type.equals("limitwidth"))   limitWidthToX(value.toLowerCase().equals("true"));
       else if (type.equals("coloroption"))  colorOption(value);
       else if (type.equals("interact"))     interactivity(value);
       else if (type.equals("sort1"))        { if (value.equals("null")) sort_1 = null; else sort_1 = Utils.decFmURL(value); }
@@ -391,7 +388,8 @@ public class RTTableCPanel extends RTPanel {
       else if (type.equals("sort1inv"))     sort_1_inv = value.toLowerCase().equals("true");
       else if (type.equals("sort2inv"))     sort_2_inv = value.toLowerCase().equals("true");
       else if (type.equals("sort3inv"))     sort_3_inv = value.toLowerCase().equals("true");
-      else throw new RuntimeException("Do Not Understand Type Value \"" + type + "\" = \"" + value + "\"");
+      else if (type.equals("visflds"))      ((TableCComponent) getRTComponent()).setVisibleFields(Utils.decFmURL(value));
+      else System.err.println("RTTableCPane.setConfig() - Do Not Understand Type Value \"" + type + "\" = \"" + value + "\"");
     }
   }
 
@@ -442,6 +440,7 @@ public class RTTableCPanel extends RTPanel {
       set.add(tablet.fileHeader());
     }
     List<String> list = new ArrayList<String>(); list.addAll(set); Collections.sort(list);
+    // for (int i=0;i<list.size();i++) System.out.println(list.get(i)); // DEBUG
 
     // Reinstantiate the combobox with the list... make sure to keep the user selection (if there is one)
     Object sel = tablet_cb.getSelectedItem();
@@ -544,9 +543,54 @@ public class RTTableCPanel extends RTPanel {
     Map<String, Integer>     max_width_lu = new HashMap<String, Integer>();
 
     /**
-     * All values for specific column header
+     * Return the maximum width needed for a field.
+     *
+     *@param field field to find the maximum width for
+     *
+     *@return maximum width in pixels
      */
-    Map<String, Set<String>> field_sets_lu = new HashMap<String, Set<String>>();
+    public int maxWidth(String field) {
+      // If we haven't done the calculation for this specific field, do it now
+      if (max_width_lu.containsKey(field) == false) {
+        BufferedImage bi = new BufferedImage(10,10,BufferedImage.TYPE_INT_RGB); Graphics2D g2d = (Graphics2D) bi.getGraphics(); int max_w = Utils.txtW(g2d, field + " ");
+
+	if (field.equals(TS0_FLD) || field.equals(TS1_FLD)) {
+	  //
+	  // Timestamp fields
+	  //
+          max_width_lu.put(TS0_FLD, Utils.txtW(g2d, Utils.shortDateSecsStr(0L) + "  "));
+          max_width_lu.put(TS1_FLD, Utils.txtW(g2d, Utils.shortDateSecsStr(0L) + "  "));
+
+	} else {
+	  //
+	  // Non-timestamp fields
+	  //
+          Iterator<Tablet> it_tab = getRTParent().getRootBundles().tabletIterator(); while (it_tab.hasNext()) {
+	    Tablet tablet = it_tab.next(); if (KeyMaker.tabletCompletesBlank(tablet, field)) {
+	      KeyMaker km = new KeyMaker(tablet, field);
+	      Iterator<Bundle> it_bun = tablet.bundleIterator(); while (it_bun.hasNext()) {
+                Bundle bundle = it_bun.next(); String keys[] = km.stringKeys(bundle);
+	        if        (keys == null || keys.length == 0) {
+	        } else if (                keys.length == 1) { int w = Utils.txtW(g2d, keys[0] + "  "); if (w > max_w) max_w = w;
+	        } else                                       {
+	          StringBuffer sb = new StringBuffer();
+		  sb.append(keys[0]); for (int i=1;i<keys.length;i++) sb.append(BundlesDT.DELIM + keys[i]);
+		  int w = Utils.txtW(g2d, sb.toString() + "  ");
+		  if (w > max_w) max_w = w;
+	        }
+	      }
+	    }
+	  }
+	  max_width_lu.put(field, max_w);
+	  g2d.dispose();
+	}
+      }
+
+      // Return the lookup or a cap depending on user settings
+      if (limitWidthToX() && max_width_lu.get(field) > 120) return 120;
+
+      return max_width_lu.get(field);
+    }
 
     /**
      * Visible fields
@@ -569,30 +613,138 @@ public class RTTableCPanel extends RTPanel {
     public TableCComponent() { }    
 
     /**
+     * Return the visible fields as an encoded string.
+     *
+     *@return visible fields
+     */
+    public String getVisibleFields() {
+      StringBuffer sb = new StringBuffer();
+      for (int i=0;i<vis_flds.length;i++) {
+        if (i > 0) sb.append(BundlesDT.DELIM);
+	sb.append(Utils.encToURL(vis_flds[i]));
+      }
+      return sb.toString();
+    }
+
+    /**
+     * Set the visible fields from an encoded string.
+     *
+     *@param enc encoded string
+     */
+    public void setVisibleFields(String enc) {
+      BundlesG globals = getRTParent().getRootBundles().getGlobals();
+
+      StringTokenizer st = new StringTokenizer(enc, BundlesDT.DELIM);
+      String  new_vis_flds[]        = new String [st.countTokens()];
+      int     new_vis_flds_x[]      = new int    [st.countTokens()];
+      boolean new_vis_flds_scalar[] = new boolean[st.countTokens()];
+
+      for (int i=0;i<new_vis_flds.length;i++) {
+        new_vis_flds[i] = Utils.decFmURL(st.nextToken());
+	if (i == 0) new_vis_flds_x[i] = 0;
+	else        new_vis_flds_x[i] = new_vis_flds_x[i-1] + maxWidth(new_vis_flds[i-1]);
+	new_vis_flds_scalar[i] = globals.isScalar(globals.fieldIndex(new_vis_flds[i]));
+      }
+
+      // Assign them over... should be synchronized because it could tear...
+      vis_flds_x      = new_vis_flds_x;
+      vis_flds_scalar = new_vis_flds_scalar;
+      vis_flds        = new_vis_flds;
+      getRTComponent().render();
+    }
+
+    /**
      * Remove the column where the mouse was clicked.  The column named should be stored in the rendercontext mouse click variable.
      */
     public void removeColumn() {
       RenderContext myrc = (RenderContext) getRTComponent().rc; if (myrc != null) {
-        String to_remove = mouse_click_in_column; if (to_remove != null && max_width_lu.containsKey(to_remove)) {
+        int to_remove_i = mouse_click_in_column_i; if (to_remove_i != -1) {
 	  String  new_vis_flds[]        = new String [vis_flds.length - 1];
 	  int     new_vis_flds_x[]      = new int    [vis_flds_x.length - 1];
 	  boolean new_vis_flds_scalar[] = new boolean[vis_flds_scalar.length - 1];
 
-	  int i = 0, new_i = 0;
-	  for (i=0;i<vis_flds.length;i++) {
-	    if (vis_flds[i].equals(to_remove)) { } else {
-                             new_vis_flds       [new_i] = vis_flds[i];
-	      if (new_i > 0) new_vis_flds_x     [new_i] = new_vis_flds_x[new_i - 1] + max_width_lu.get(new_vis_flds[new_i - 1]);
-	                     new_vis_flds_scalar[new_i] = vis_flds_scalar[i];
-	      new_i++;
-	    }
-	  }
-	  max_width_lu.remove(to_remove);
+          int new_i = 0;
+          for (int i=0;i<vis_flds.length;i++) {
+            if (i == to_remove_i) continue; // column to remove.. just go to next index
+            // Copy field
+            new_vis_flds[new_i] = vis_flds[i];
+	    // Figure out x coordinate
+	    if (new_i == 0) new_vis_flds_x[new_i] = 0;
+	    else            new_vis_flds_x[new_i] = new_vis_flds_x[new_i-1] + maxWidth(new_vis_flds[new_i-1]);
+            // Copy scalar
+	    new_vis_flds_scalar[new_i] = vis_flds_scalar[i];
+            // Increment the new index
+	    new_i++;
+          }
 
 	  // Assign them over... should be synchronized because it could tear...
 	  vis_flds_x      = new_vis_flds_x;
 	  vis_flds_scalar = new_vis_flds_scalar;
 	  vis_flds        = new_vis_flds;
+
+          getRTComponent().render();
+	}
+      }
+    }
+
+    /**
+     * Add a column to the table after asking the user for their selection via dialog.
+     *
+     *@param before_index add the new column to the left of the mouse clicked column
+     */
+    public void addColumn(boolean before_index) {
+      RenderContext myrc = (RenderContext) getRTComponent().rc; if (myrc != null) {
+
+        int to_add_before_i;
+        if (before_index) to_add_before_i = mouse_click_in_column_i; 
+        else              to_add_before_i = mouse_click_in_column_i + 1;
+
+        if (to_add_before_i != -1) {
+          Object new_fld_sel = JOptionPane.showInputDialog(null, "Choose one", "Input", JOptionPane.INFORMATION_MESSAGE, null, flds, flds[0]);
+	  if (new_fld_sel != null) {
+            BundlesG globals = getRTParent().getRootBundles().getGlobals();
+	    String  new_vis_flds[]        = new String [vis_flds.length + 1];
+	    int     new_vis_flds_x[]      = new int    [vis_flds_x.length + 1];
+	    boolean new_vis_flds_scalar[] = new boolean[vis_flds_scalar.length + 1];
+
+	    // Copy over old
+	    for (int i=0;i<to_add_before_i;i++) {
+	      new_vis_flds       [i] = vis_flds       [i];
+	      if (i == 0) new_vis_flds_x[i] = 0;
+              else        new_vis_flds_x[i] = new_vis_flds_x[i-1] + maxWidth(new_vis_flds[i-1]);
+	      new_vis_flds_scalar[i] = vis_flds_scalar[i];
+	    }
+
+	    // Insert new
+	    new_vis_flds       [to_add_before_i] = (String) new_fld_sel;
+	    if (to_add_before_i == 0) new_vis_flds_x     [to_add_before_i] = 0;
+	    else                      new_vis_flds_x     [to_add_before_i] = vis_flds_x[to_add_before_i - 1] + maxWidth(vis_flds[to_add_before_i-1]);
+	    new_vis_flds_scalar[to_add_before_i] = globals.isScalar(globals.fieldIndex(new_vis_flds[to_add_before_i]));
+
+	    // Copy rest
+	    for (int i=to_add_before_i;i<vis_flds.length;i++) {
+	      new_vis_flds       [i+1] = vis_flds       [i];
+	      new_vis_flds_x     [i+1] = new_vis_flds_x [i] + maxWidth(new_vis_flds[i]);
+	      new_vis_flds_scalar[i+1] = vis_flds_scalar[i];
+	    }
+
+	    // Assign them over... should be synchronized because it could tear...
+	    vis_flds_x      = new_vis_flds_x;
+	    vis_flds_scalar = new_vis_flds_scalar;
+	    vis_flds        = new_vis_flds;
+
+            getRTComponent().render();
+
+	    // Save the new configuration as a preference
+            // - Field ordering
+	    StringBuffer sb = new StringBuffer(); for (int i=0;i<vis_flds.length;i++) { sb.append(Utils.encToURL(vis_flds[i])); sb.append(BundlesDT.DELIM); }
+	    // - Additional options for the rendering
+	    StringBuffer pref_sb = new StringBuffer();
+	    pref_sb.append(Utils.encToURL(sb.toString())                      + BundlesDT.DELIM +
+	                   "limitwidth=" + (limitWidthToX() ? "true":"false") + BundlesDT.DELIM +  
+		           "header="     + (renderHeader()  ? "true":"false"));
+	    RTPrefs.store("RTTableC_" + Utils.encToURL(tablet_str), pref_sb.toString());
+	  }
 	}
       }
     }
@@ -628,8 +780,8 @@ public class RTTableCPanel extends RTPanel {
 	    if (j != 0) sb.append(','); 
 	    
 	    // Timestamps are special...
-	    if        (vis_flds[j].equals(TS0_FLD)) { sb.append(Utils.exactDate(bundle.ts0()));
-	    } else if (vis_flds[j].equals(TS1_FLD)) { sb.append(Utils.exactDate(bundle.ts1()));
+	    if        (vis_flds[j].equals(TS0_FLD)) { sb.append(Utils.shortDateSecsStr(bundle.ts0()));
+	    } else if (vis_flds[j].equals(TS1_FLD)) { sb.append(Utils.shortDateSecsStr(bundle.ts1()));
 	    } else                                  {
 	      String strs[] = kms[j].stringKeys(bundle);
 	      String str    = "";
@@ -667,6 +819,7 @@ public class RTTableCPanel extends RTPanel {
 
       // Find the tablet that matches this tablet string - slight issue if multiple tablets share the
       // exact same file header...
+      // System.err.println("configureForTablet() - Looking for \"" + tablet_str + "\"");
       Tablet tablet =  null; Iterator<Tablet> it_tab = getRTParent().getRootBundles().tabletIterator();
       while (tablet == null && it_tab.hasNext()) {
         Tablet tab = it_tab.next();
@@ -675,64 +828,66 @@ public class RTTableCPanel extends RTPanel {
       }
       if (tablet == null) throw new RuntimeException("Unable To Find Tablet Matching String \"" + tablet_str + "\"");
 
-      // Deconstruct the columns
-      int all_flds[] = tablet.getFields(); has_timestamps = tablet.hasTimeStamps(); has_durations = tablet.hasDurations(); BundlesG globals = getRTParent().getRootBundles().getGlobals();
-      List<String> fields_list = new ArrayList<String>(); for (int i=0;i<all_flds.length;i++) if (all_flds[i] != -1 && tablet.hasField(i)) fields_list.add(globals.fieldHeader(i));
-      flds = new String[fields_list.size()]; for (int i=0;i<flds.length;i++) { flds[i] = fields_list.get(i); /* System.err.println("Field In Tablet [" + i + "] = \"" + flds[i] + "\""); */ }
+      // Determine if there are timestamps
+      has_timestamps = tablet.hasTimeStamps(); has_durations = tablet.hasDurations();
+
+      // Deconstruct the columns 
+      BundlesG globals = getRTParent().getRootBundles().getGlobals();
+      List<String> fields_list = new ArrayList<String>(); 
+      if (has_timestamps) fields_list.add(TS0_FLD);
+      if (has_durations)  fields_list.add(TS1_FLD);
+
+      // Use the blanks and tabletCompletesBlank to determine which apply to this tablet
+      String blanks[] = KeyMaker.blanks(globals, false, true, true, true); 
+      for (int i=0;i<blanks.length;i++) if (KeyMaker.tabletCompletesBlank(tablet,blanks[i])) fields_list.add(blanks[i]);
+      flds = new String[fields_list.size()]; 
+      for (int i=0;i<flds.length;i++) { flds[i] = fields_list.get(i); }
 
       // Determine the data flavor
       flavors = StatsOverlay.dataFlavors(tablet.bundleSet());
 
-      // Determine the maximum width of the data in the fields (and the values per field)
-      BufferedImage bi = new BufferedImage(10,10,BufferedImage.TYPE_INT_RGB); Graphics2D g2d = null; try {
-        g2d = (Graphics2D) bi.getGraphics(); for (int i=0;i<flds.length;i++) {
-          /* System.err.println("Examining Field \"" + flds[i] + "\" For Tablet \"" + tablet + "\""); */
-	  KeyMaker km = new KeyMaker(tablet, flds[i]); Set<String> values = new HashSet<String>();
-	  // Gather all the strings into a set
-          Iterator<Bundle> it_bun = tablet.bundleIterator(); while (it_bun.hasNext()) {
-	    Bundle bundle = it_bun.next(); String strs[] = km.stringKeys(bundle);
-	    if (strs != null && strs.length > 0) for (int j=0;j<strs.length;j++) values.add(strs[j]);
-	  }
+      // Put together a list of the normal fields -- i.e., fields that don't have a transform or other non-original data effect
+      List<String> fields_normal = new ArrayList<String>();
+      for (int i=0;i<flds.length;i++) { if (flds[i].indexOf(BundlesDT.DELIM) < 0) fields_normal.add(flds[i]); }
 
-	  // After the strings were uniqued, determine the largest size
-          int max_w = Utils.txtW(g2d, flds[i] + "   ");
-	  Iterator<String> it_str = values.iterator(); while (it_str.hasNext()) {
-            String str = it_str.next(); int w = Utils.txtW(g2d, str + "  "); if (w > max_w) max_w = w;
-	  }
+      // Make the visible columns
+      int cols = fields_normal.size();
+      vis_flds = new String[cols]; for (int i=0;i<cols;i++) vis_flds[i] = fields_normal.get(i);
 
-	  // Record the information for rendering use
-          max_width_lu.put(flds[i], max_w);
-	  field_sets_lu.put(flds[i], values);
-	}
+      // If there's a preconfig, apply that here
+      String preconfig = RTPrefs.retrieveString("RTTableC_" + Utils.encToURL(tablet_str)); if (preconfig != null) {
+        StringTokenizer st = new StringTokenizer(preconfig, BundlesDT.DELIM);
 
-	// Guess a width for timestamps if present
-	if (has_timestamps) { max_width_lu.put(TS0_FLD, Utils.txtW(g2d, Utils.exactDate(0L) + "  ")); field_sets_lu.put(TS0_FLD, new HashSet<String>()); }
-	if (has_durations)  { max_width_lu.put(TS1_FLD, Utils.txtW(g2d, Utils.exactDate(0L) + "  ")); field_sets_lu.put(TS1_FLD, new HashSet<String>()); }
+	// Extract the preconfig fields
+	String preconf_fields = Utils.decFmURL(st.nextToken());
+	StringTokenizer st_fields = new StringTokenizer(preconf_fields, BundlesDT.DELIM);
+	// - Reallocate the columns and vis_flds array
+	cols = st_fields.countTokens();
+	vis_flds = new String[cols]; for (int i=0;i<vis_flds.length;i++) vis_flds[i] = Utils.decFmURL(st_fields.nextToken());
 
-      } finally { if (g2d != null) g2d.dispose(); }
-
-      // Load previous configuration... or initialize a default view
-      if (true) {
-        // Count cols
-        int cols = flds.length; if (has_timestamps) cols++; if (has_durations) cols++;
-
-	// Make the visible columns
-	vis_flds = new String[cols]; int vis_flds_i = 0;
-	if (has_timestamps) vis_flds[vis_flds_i++] = TS0_FLD;
-	if (has_durations)  vis_flds[vis_flds_i++] = TS1_FLD;
-	for (int i=0;i<flds.length;i++) vis_flds[vis_flds_i++] = flds[i];
-
-        // Allocate x offsets for the columns
-        vis_flds_x = new int[cols]; vis_flds_x[0] = 0;
-        for (int i=1;i<vis_flds.length;i++) vis_flds_x[i] = vis_flds_x[i-1] + max_width_lu.get(vis_flds[i-1]);
-
-	// Determine if the fields are scalars (scalars need to be right justified)
-	vis_flds_scalar = new boolean[cols];
-	for (int i=0;i<vis_flds_scalar.length;i++) {
-          if      (vis_flds[i].equals(TS0_FLD) || vis_flds[i].equals(TS1_FLD)) vis_flds_scalar[i] = false;
-          else                                                                 vis_flds_scalar[i] = globals.isScalar(globals.fieldIndex(vis_flds[i]));
+	// Parse the additional options
+	while (st.hasMoreTokens()) {
+	  String str = st.nextToken(); 
+	  StringTokenizer st_typeval = new StringTokenizer(str, "="); String type = st_typeval.nextToken(); String value = st_typeval.nextToken();
+	  if        (type.equals("limitwidth")) { if (value.toLowerCase().equals("true")) limitWidthToX(true); else limitWidthToX(false);
+	  } else if (type.equals("header"))     { if (value.toLowerCase().equals("true")) renderHeader(true);  else renderHeader(false);
+	  } else System.err.println("RTTableCPanel.configureForTablet() - Do Not Understand Type/Val \"" + type + "\"/\"" + value + "\"");
 	}
       }
+
+      // Allocate x offsets for the columns
+      vis_flds_x = new int[cols]; vis_flds_x[0] = 0;
+      for (int i=1;i<vis_flds.length;i++) vis_flds_x[i] = vis_flds_x[i-1] + maxWidth(vis_flds[i-1]);
+
+      // Determine if the fields are scalars (scalars need to be right justified)
+      vis_flds_scalar = new boolean[cols];
+      for (int i=0;i<vis_flds_scalar.length;i++) {
+        if      (vis_flds[i].equals(TS0_FLD) || vis_flds[i].equals(TS1_FLD)) vis_flds_scalar[i] = false;
+        else                                                                 vis_flds_scalar[i] = globals.isScalar(globals.fieldIndex(vis_flds[i]));
+      }
+
+      // Force a render
+      getRTComponent().render();
     }
 
     /**
@@ -804,10 +959,10 @@ public class RTTableCPanel extends RTPanel {
       }
 
       // Check the scrollbar area
-      if (myrc.scroll_bar_all.contains(my_mx, my_my)) mouse_in_scroll_bar = true; else mouse_in_scroll_bar = false;
+      if (myrc != null && myrc.scroll_bar_all != null &&  myrc.scroll_bar_all.contains(my_mx, my_my)) mouse_in_scroll_bar = true; else mouse_in_scroll_bar = false;
 
       // Check the header labels area
-      if (myrc.render_header && my_my < myrc.row_h && mouse_in_hdr != null) mouse_in_hdr_labels = true; else mouse_in_hdr_labels = false;
+      if (myrc != null && myrc.render_header && my_my < myrc.row_h && mouse_in_hdr != null) mouse_in_hdr_labels = true; else mouse_in_hdr_labels = false;
     }
 
     /**
@@ -870,7 +1025,8 @@ public class RTTableCPanel extends RTPanel {
         //
         // Record mouse press column information
 	//
-        mouse_click_in_column = myrc.columnAt(me.getX());
+        mouse_click_in_column   = myrc.columnAt(me.getX());
+	mouse_click_in_column_i = myrc.columnIndexAt(me.getX());
 
 	//
 	// Scrollbar stuff
@@ -914,12 +1070,12 @@ public class RTTableCPanel extends RTPanel {
     /**
      * Mouse clicked in this column
      */
-    public  String mouse_click_in_column = null,
+    public  String mouse_click_in_column   = null;
 
     /**
-     * Mouse pressed in this column
+     * Mouse clicked in this column index
      */
-                   mouse_press_in_column = null;
+    public  int    mouse_click_in_column_i = -1;
 
     /**
      *
@@ -980,7 +1136,7 @@ public class RTTableCPanel extends RTPanel {
       String count_by = getRTParent().getCountBy(), color_by = getRTParent().getColorBy();
       if (bs != null && tablet_str != null) { 
         RenderContext myrc = new RenderContext(id, bs, count_by, color_by, 
-	                                       renderHeader(), renderHeaderExtras(), highlightTagged(),
+	                                       renderHeader(), highlightTagged(),
 					       colorOption(),
 	                                       getWidth(), getHeight()); 
         return myrc; 
@@ -1146,11 +1302,6 @@ public class RTTableCPanel extends RTPanel {
       boolean render_header,
 
       /**
-       * Render the header extras
-       */
-              render_header_extras,
-
-      /**
        * Highlight tagged entities
        */
               highlight_tagged;
@@ -1179,11 +1330,11 @@ public class RTTableCPanel extends RTPanel {
        * Construct the render context
        */
       public RenderContext(short id, Bundles bs, String count_by, String color_by, 
-                           boolean render_header, boolean render_header_extras, boolean highlight_tagged,
+                           boolean render_header, boolean highlight_tagged,
 			   ColorOption color_option,
                            int rc_w, int rc_h) {
         render_id = id; this.bs = bs; this.count_by = count_by; this.color_by = color_by; 
-	this.render_header = render_header; this.render_header_extras = render_header_extras; this.highlight_tagged = highlight_tagged;
+	this.render_header = render_header; this.highlight_tagged = highlight_tagged;
 	this.color_option  = color_option;
 	this.rc_w = rc_w; this.rc_h = rc_h;
 
@@ -1402,6 +1553,20 @@ public class RTTableCPanel extends RTPanel {
       }
 
       /**
+       * Return the column index of the x position
+       *
+       *@param x x coordinate
+       *
+       *@return index of column for x
+       */
+      public int columnIndexAt(int x) {
+	for (int i=0;i<vis_flds_x.length;i++) {
+	  if (x >= vis_flds_x[i] && x <= vis_flds_x[i] + maxWidth(vis_flds[i])) return i;
+	}
+	return -1;
+      }
+
+      /**
        * Map that converts geometry to tagged lookups
        */
       Map<Rectangle2D,Set<String>> tagged_lu = new HashMap<Rectangle2D,Set<String>>();
@@ -1413,6 +1578,9 @@ public class RTTableCPanel extends RTPanel {
       public BufferedImage getBase() {
         if (base_bi == null) {
 	  Graphics2D g2d = null; try {
+	    // Recalc the x offsets
+            if (vis_flds_x.length > 0) { vis_flds_x[0] = 0; for (int i=1;i<vis_flds_x.length;i++) vis_flds_x[i] = vis_flds_x[i-1] + maxWidth(vis_flds[i-1]); }
+
 	    // Construct the image, setup the background
 	    base_bi = new BufferedImage(rc_w, rc_h, BufferedImage.TYPE_INT_RGB); g2d = (Graphics2D) base_bi.getGraphics();
 	    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); txt_h = Utils.txtH(g2d, "0"); row_h = txt_h + 2;
@@ -1420,6 +1588,12 @@ public class RTTableCPanel extends RTPanel {
 
             // Clear state... this getBase() may be called multiple times because of the scrolling issue
             tagged_lu.clear(); bundle_to_geom.clear(); geom_to_bundle.clear(); entity_to_geom.clear(); geom_to_entities.clear(); geom_to_header.clear();
+            
+	    //
+	    // Make every other column the near bg color
+	    //
+	    g2d.setColor(RTColorManager.getColor("background", "almostbg"));
+	    for (int i=0;i<vis_flds.length;i+=2) { g2d.fillRect(vis_flds_x[i], 0, maxWidth(vis_flds[i]), getRCHeight()); }
 
 	    //
             // Render column lines
@@ -1427,44 +1601,42 @@ public class RTTableCPanel extends RTPanel {
             g2d.setColor(RTColorManager.getColor("axis", "minor"));
             for (int i=0;i<vis_flds.length;i++) { 
 	      g2d.drawLine(vis_flds_x[i]-1, 0, vis_flds_x[i]-1, rc_h); 
-	      geom_to_header.put(new Rectangle2D.Double(vis_flds_x[i], 0, max_width_lu.get(vis_flds[i]), rc_h), vis_flds[i]);
+	      geom_to_header.put(new Rectangle2D.Double(vis_flds_x[i], 0, maxWidth(vis_flds[i]), rc_h), vis_flds[i]);
 	    }
 
 	    //
-	    // Render the header
+	    // Render the header (if enabled)
 	    //
-	    int y_off = row_h; g2d.setColor(RTColorManager.getColor("label", "major"));
-            for (int i=0;i<vis_flds.length;i++) { 
-              g2d.drawString(vis_flds[i], vis_flds_x[i], y_off); 
-
-	      // Indicate the sorting priority and direction
-	      String sort_str = null; boolean sort_inv = false;
-              if      (vis_flds[i].equals(sort_1)) { sort_str = "1"; sort_inv = sort_1_inv; } 
-	      else if (vis_flds[i].equals(sort_2)) { sort_str = "2"; sort_inv = sort_2_inv; } 
-	      else if (vis_flds[i].equals(sort_3)) { sort_str = "3"; sort_inv = sort_3_inv; }
-
-	      if (sort_str != null) {
-	        int w = Utils.txtW(g2d, vis_flds[i] + " ");
-
-		if (sort_inv) { g2d.setColor(RTColorManager.getColor("background", "reverse")); g2d.drawRect(vis_flds_x[i] + w, y_off - row_h + 3, Utils.txtW(g2d, sort_str) + 4, row_h - 1);
-		                                                                                g2d.drawString(sort_str, vis_flds_x[i] + w + 2, y_off);
-                } else        { g2d.setColor(RTColorManager.getColor("background", "reverse")); g2d.fillRect(vis_flds_x[i] + w, y_off - row_h + 3, Utils.txtW(g2d, sort_str) + 4, row_h - 1);
-		                g2d.setColor(RTColorManager.getColor("background", "default")); g2d.drawString(sort_str, vis_flds_x[i] + w + 2, y_off); }
-
-	        g2d.setColor(RTColorManager.getColor("label", "major"));
-	      }
+	    int y_off = row_h; 
+            if (render_header) {
+              for (int i=0;i<vis_flds.length;i++) { 
+                g2d.setColor(RTColorManager.getColor("label", "header"));
+                g2d.drawString(fit(vis_flds[i], vis_flds[i], g2d), vis_flds_x[i], y_off); 
+  
+	        // Indicate the sorting priority and direction
+	        String sort_str = null; boolean sort_inv = false;
+                if      (vis_flds[i].equals(sort_1)) { sort_str = "1"; sort_inv = sort_1_inv; } 
+	        else if (vis_flds[i].equals(sort_2)) { sort_str = "2"; sort_inv = sort_2_inv; } 
+	        else if (vis_flds[i].equals(sort_3)) { sort_str = "3"; sort_inv = sort_3_inv; }
+  
+	        if (sort_str != null) {
+	          int w = Utils.txtW(g2d, vis_flds[i] + " ");
+  
+		  if (sort_inv) { g2d.setColor(RTColorManager.getColor("background", "reverse")); g2d.drawRect(vis_flds_x[i] + w, y_off - row_h + 3, Utils.txtW(g2d, sort_str) + 4, row_h - 1);
+		                                                                                  g2d.drawString(sort_str, vis_flds_x[i] + w + 2, y_off);
+                  } else        { g2d.setColor(RTColorManager.getColor("background", "reverse")); g2d.fillRect(vis_flds_x[i] + w, y_off - row_h + 3, Utils.txtW(g2d, sort_str) + 4, row_h - 1);
+		                  g2d.setColor(RTColorManager.getColor("background", "default")); g2d.drawString(sort_str, vis_flds_x[i] + w + 2, y_off); }
+  
+	          g2d.setColor(RTColorManager.getColor("label", "major"));
+	        }
+              }
+              y_off += row_h;
             }
-
-	    //
-	    // Render additional header info (if requested) -- Set Size, Shown Set Size, Sort Order
-	    //
-
-            y_off += row_h;
 
 	    //
 	    // Check to see if we have data -- if so, render it
 	    //
-	    if (bundle_list != null && bundle_list.size() > 0) {
+	    if (bundle_list != null && bundle_list.size() > 0 && vis_flds.length > 0) {
 	      // Create the keymakers
 	      Tablet tablet = bundle_list.get(0).getTablet();
               KeyMaker kms[] = new KeyMaker[vis_flds.length];
@@ -1473,26 +1645,34 @@ public class RTTableCPanel extends RTPanel {
                 } else kms[i] = new KeyMaker(tablet, vis_flds[i]);
               }
 
+              // Determine the coloring options
+              boolean tablet_supports_color = false; KeyMaker color_km = null;
+	      if (color_by != null && KeyMaker.tabletCompletesBlank(tablet, color_by)) {
+	        tablet_supports_color = true; color_km = new KeyMaker(tablet, color_by);
+	      }
+
+              // Track the number of cells not rendered
+              int hidden_above = 0,
+	          hidden_below = 0;
+
 	      // Render the cells
 	      g2d.setColor(RTColorManager.getColor("data", "default"));
-              int bundle_list_i = top_render_bundle_i;
+              int bundle_list_i = top_render_bundle_i; hidden_above = bundle_list_i;
               while (y_off < getRCHeight() + txt_h && bundle_list_i < bundle_list.size()) {
-	        Bundle bundle = bundle_list.get(bundle_list_i); 
+	        Bundle bundle = bundle_list.get(bundle_list_i); hidden_below = bundle_list.size() - 1 - bundle_list_i;
                 if (bundle_list_i == top_render_bundle_i) { top_render_bundle = bundle; assignTopBundle(bs,bundle); }
                 bundle_list_i++;
 
                 // If the "by row" color option is set, configure the color
-		if (color_option == ColorOption.ROWS) {
-		  for (int i=0;i<vis_flds.length;i++) if (color_by != null && color_by.equals(vis_flds[i])) {
-	            String strs[] = kms[i].stringKeys(bundle); if (strs != null && strs.length > 0) {
-                      if (strs.length == 1) g2d.setColor(RTColorManager.getColor(strs[0]));
-                      else                  g2d.setColor(RTColorManager.getColor("set", "multi"));
-		    }
-		  }
-		}
+		if (color_option == ColorOption.ROWS && tablet_supports_color) {
+                  String strs[] = color_km.stringKeys(bundle); if (strs != null && strs.length > 0) {
+                    if (strs.length == 1) g2d.setColor(RTColorManager.getColor(strs[0]));
+                    else                  g2d.setColor(RTColorManager.getColor("set", "multi"));
+                  }
+                }
 
                 // Calculate and store row geometry (lookups between geometry and records)
-                Rectangle2D geom = new Rectangle2D.Double(0, y_off - txt_h + 1, vis_flds_x[vis_flds_x.length - 1] + max_width_lu.get(vis_flds[vis_flds.length-1]), row_h);
+                Rectangle2D geom = new Rectangle2D.Double(0, y_off - txt_h + 1, vis_flds_x[vis_flds_x.length - 1] + maxWidth(vis_flds[vis_flds.length-1]), row_h);
                 bundle_to_geom.put(bundle, geom);
 		geom_to_bundle.put(geom, bundle);
   
@@ -1504,8 +1684,8 @@ public class RTTableCPanel extends RTPanel {
 		    if (color_option == ColorOption.ALL_CELLS) g2d.setColor(RTColorManager.getColor("data", "default"));
 
 		    // - Render the actual timestamp
-                    if        (vis_flds[i].equals(TS0_FLD)) { g2d.drawString(Utils.exactDate(bundle.ts0()), vis_flds_x[i], y_off);
-                    } else if (vis_flds[i].equals(TS1_FLD)) { g2d.drawString(Utils.exactDate(bundle.ts1()), vis_flds_x[i], y_off);
+                    if        (vis_flds[i].equals(TS0_FLD)) { g2d.drawString(fit(TS0_FLD,Utils.shortDateSecsStr(bundle.ts0()),g2d), vis_flds_x[i], y_off);
+                    } else if (vis_flds[i].equals(TS1_FLD)) { g2d.drawString(fit(TS1_FLD,Utils.shortDateSecsStr(bundle.ts1()),g2d), vis_flds_x[i], y_off);
                     }
                   } else {
                     // Regular fields
@@ -1519,8 +1699,10 @@ public class RTTableCPanel extends RTPanel {
 			}
 			// If anything is tagged...draw something to indicate that... and keep track of the location, drawing
                         if (something_tagged) {
-			  Color color = g2d.getColor(); g2d.setColor(RTColorManager.getColor("brush", "0"));
-                          Rectangle2D rect = new Rectangle2D.Double(vis_flds_x[i]-1, y_off - txt_h + 1, max_width_lu.get(vis_flds[i]) - 3, txt_h + 2);
+			  Color color = g2d.getColor(); 
+                          g2d.setColor(RTColorManager.getColor("brush", "0"));
+                          Rectangle2D rect = new Rectangle2D.Double(vis_flds_x[i]-1, y_off - txt_h + 1, maxWidth(vis_flds[i]) - 3, txt_h + 2);
+                          if (all_tags.size() == 1) g2d.setColor(RTColorManager.getColor(all_tags.iterator().next()));
                           g2d.draw(rect);
                           Composite composite = g2d.getComposite(); g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.2f));
                           g2d.fill(rect);
@@ -1539,12 +1721,15 @@ public class RTTableCPanel extends RTPanel {
 		      // - Render the actual field
                       if (vis_flds_scalar[i]) {
                         // Right justify scalars
-		        g2d.drawString(strs[0], vis_flds_x[i] + max_width_lu.get(vis_flds[i]) - 3 - Utils.txtW(g2d, strs[0]), y_off);
+		        g2d.drawString(fit(vis_flds[i], strs[0], g2d), vis_flds_x[i] + maxWidth(vis_flds[i]) - 3 - Utils.txtW(g2d, strs[0]), y_off);
                       } else {
                         // Left justify everything else
-		        g2d.drawString(strs[0], vis_flds_x[i], y_off);
+			if (strs.length == 1) { g2d.drawString(fit(vis_flds[i], strs[0], g2d), vis_flds_x[i]+1, y_off); } else {
+			  Arrays.sort(strs); StringBuffer sb = new StringBuffer(); sb.append(strs[0]); for (int j=1;j<strs.length;j++) { sb.append(BundlesDT.DELIM); sb.append(strs[j]); }
+			  g2d.drawString(fit(vis_flds[i], sb.toString(), g2d), vis_flds_x[i]+1, y_off);
+			}
                       }
-                      Rectangle2D rect = new Rectangle2D.Double(vis_flds_x[i] - 2, y_off - row_h + 2, max_width_lu.get(vis_flds[i]), row_h);
+                      Rectangle2D rect = new Rectangle2D.Double(vis_flds_x[i] - 2, y_off - row_h + 2, maxWidth(vis_flds[i]), row_h);
 
                       for (int k=0;k<strs.length;k++) {
 		        if (entity_to_geom.  containsKey(strs[k]) == false) entity_to_geom.  put(strs[k], new HashSet<Rectangle2D>());
@@ -1573,6 +1758,21 @@ public class RTTableCPanel extends RTPanel {
 	      scroll_bar     = new Rectangle2D.Double(rc_w - scroll_bar_w - 1, scroll_bar_y, scroll_bar_w, scroll_bar_h);
 	      g2d.fill(scroll_bar);
 
+	      // Draw the numbers hidden
+              if ((hidden_above > 0 || hidden_below > 0)) {
+                g2d.setColor(RTColorManager.getColor("label", "errorfg"));
+                if (hidden_above > 0) {
+                  String s = "" + hidden_above; int s_w = Utils.txtW(g2d,s); int x = (int) (getRCWidth()-scroll_bar_all.getWidth()-2), y = 7 + s_w + txt_h;   Utils.drawRotatedString(g2d, s, x, y);
+                  g2d.drawLine(x, txt_h, x,   y);
+                  g2d.drawLine(x, txt_h, x+5, txt_h+5);
+                }
+                if (hidden_below > 0) {
+                  String s = "" + hidden_below; int s_w = Utils.txtW(g2d,s); int x = (int) (getRCWidth()-scroll_bar_all.getWidth()-2), y = getRCHeight() - 1; Utils.drawRotatedString(g2d, s, x, y);
+                  g2d.drawLine(x, y-txt_h/2, x,   y - s_w - txt_h/2);
+                  g2d.drawLine(x, y-txt_h/2, x+5, y-txt_h/2-5);
+                }
+              }
+
 	      // If the bundle to scrollbar geometry is empty, fill it (only want to do this once)
 	      Rectangle2D last_rect = null;
 	      if (sb_geom_to_bundles.keySet().size() == 0) {
@@ -1589,6 +1789,27 @@ public class RTTableCPanel extends RTPanel {
 	  } finally { if (g2d != null) g2d.dispose(); }
 	}
 	return base_bi;
+      }
+
+      /**
+       * Determine how the correct length of a string to fit within a specific fields allotment of pixels.
+       *
+       *@param fld field to fit within
+       *@param str string to modify
+       *@param g2d graphics primitive
+       *
+       *@return modified string to fit within fields width
+       */
+      public String fit(String fld, String str, Graphics2D g2d) {
+        int fld_w = maxWidth(fld); int str_w = Utils.txtW(g2d, str); if (str_w < fld_w) return str;
+
+	// guess the length
+	float char_w = ((float) str_w)/((float) str.length());
+        int   index  = (int) (fld_w/char_w);
+
+	// Shrink string until it fits
+	while (index > 0 && Utils.txtW(g2d,str.substring(0,index) + " >") > fld_w) index--;
+	return str.substring(0,index) + " >";
       }
 
       /**

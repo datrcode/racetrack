@@ -151,7 +151,9 @@ public class RTTimePanel extends RTPanel {
   final static String PERIOD_MINUTES         = "Period: Mins",
                       PERIOD_HOURS           = "Period: Hrs",
                       PERIOD_DAYS            = "Period: Days",
-                      PERIOD_WEEKS           = "Period: Weeks";
+                      PERIOD_WEEKS           = "Period: Weeks",
+                      PERIOD_DAYS_DUR        = "Period: Days Dur",
+                      PERIOD_WEEKS_DUR       = "Period: Weeks Dur";
   final static String MAPPER_STRS[] = { TIMEBIN_CONTINUOUS,
                                         TIMEBIN_CONTINUOUS_DUR,
                                         TIMEBIN_CONTINUOUS_2,
@@ -165,11 +167,15 @@ public class RTTimePanel extends RTPanel {
                                         PERIOD_MINUTES,
                                         PERIOD_HOURS,
                                         PERIOD_DAYS,
-                                        PERIOD_WEEKS };
+                                        PERIOD_WEEKS,
+                                        PERIOD_DAYS_DUR,
+                                        PERIOD_WEEKS_DUR };
   final static String PERIOD_STRS[] = { PERIOD_MINUTES,
                                         PERIOD_HOURS,
                                         PERIOD_DAYS,
-                                        PERIOD_WEEKS };
+                                        PERIOD_WEEKS,
+					PERIOD_DAYS_DUR,
+					PERIOD_WEEKS_DUR };
 
   /**
    * Constants for timeframes in milliseconds.
@@ -258,8 +264,8 @@ public class RTTimePanel extends RTPanel {
 
     // Cut and Paste Options
     getRTPopupMenu().addSeparator();
-    getRTPopupMenu().add(mi = new JMenuItem("Copy Timestamp"));                        mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { copyTimestamp();        } } );
-    getRTPopupMenu().add(mi = new JMenuItem("Copy Interval Times"));                   mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { copyInterval();         } } );
+    getRTPopupMenu().add(mi = new JMenuItem("Copy Earliest Visible Time"));            mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { copyTimestamp();        } } );
+    getRTPopupMenu().add(mi = new JMenuItem("Copy Visible Interval Times"));           mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { copyInterval();         } } );
     getRTPopupMenu().add(mi = new JMenuItem("Mark Times in Clipboard (Destructive)")); mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { markTimesInClipboard(); } } );
     getRTPopupMenu().add(mi = new JMenuItem("Add Times In Clipboard"));                mi.addActionListener(new ActionListener() { public void actionPerformed(ActionEvent ae) { addTimesInClipboard();  } } );
 
@@ -463,8 +469,7 @@ public class RTTimePanel extends RTPanel {
    * Copy the timestamp of the last mouse drag position to the clipboard.
    */
   protected void copyTimestamp() {
-    RTTimeComponent comp = (RTTimeComponent) getRTComponent();
-    long timestamp = comp.getTimeAt(comp.getDragX1(),comp.getDragY1());
+    long timestamp = getRTParent().getVisibleBundles().ts0();
     if (timestamp == 0L) return;
     Clipboard  clipboard = getToolkit().getSystemClipboard();
     StringSelection selection = new StringSelection(Utils.humanReadableDate(timestamp));
@@ -475,9 +480,8 @@ public class RTTimePanel extends RTPanel {
    * Copy the interval timestamps of the mouse drag to the clipboard.
    */
   protected void copyInterval() {
-    RTTimeComponent comp = (RTTimeComponent) getRTComponent();
-    long time_at_0 = comp.getTimeAt(comp.getDragX0(),comp.getDragY0()),
-         time_at_1 = comp.getTimeAt(comp.getDragX1(),comp.getDragY1());
+    long time_at_0 = getRTParent().getVisibleBundles().ts0(),
+         time_at_1 = getRTParent().getVisibleBundles().ts1();
     if (time_at_0 == 0L || time_at_1 == 0L) return;
     if (time_at_0 > time_at_1) { long tmp = time_at_0; time_at_0 = time_at_1; time_at_1 = tmp; }
     Clipboard  clipboard = getToolkit().getSystemClipboard();
@@ -1336,13 +1340,23 @@ public class RTTimePanel extends RTPanel {
         long period; 
 
 	/**
+	 * Model duration as part of the periodicity
+	 */
+        boolean model_duration;
+
+	/**
 	 * Consruct the periodic mapper with the specified period.
 	 *
 	 *@param period period in milliseconds
 	 */
-	public PeriodicityMapper(long period) { this.period = period; }
+	public PeriodicityMapper(long period, boolean model_duration) { this.period = period; this.model_duration = model_duration; }
         public String map(Bundle bundle) {
-	  if (bundle.hasTime() || bundle.hasDuration()) {
+	  if        (model_duration   && bundle.hasDuration()) {
+            int x0    = (int) (graph_x_ins + ((bundle.ts0() % period) * graph_w)/period);
+            int x1    = (int) (graph_x_ins + ((bundle.ts1() % period) * graph_w)/period);
+            int wraps = (int) ((bundle.ts1() - bundle.ts0())/period);
+            return "" + x0 + "," + x1 + "," + wraps;
+	  } else if (bundle.hasTime() || bundle.hasDuration()) {
             return "" + (graph_x_ins + ((bundle.ts0() % period) * graph_w)/period);
 	  } else return null;
         }
@@ -1380,12 +1394,17 @@ public class RTTimePanel extends RTPanel {
 
       /**
        * Special version of the {@link PeriodicityMapper} to re-align weeks to Sunday.  Apparently,
-       * the epoch fell on a Thursday.
+       * the epoch fell on a Thursday.  The number four below adjusts for this fact...
        */
       class WeeklyPeriodicityMapper extends PeriodicityMapper {
-        public WeeklyPeriodicityMapper(long period) { super(period); }
+        public WeeklyPeriodicityMapper(long period, boolean model_duration) { super(period,model_duration); }
 	public String map(Bundle bundle) {
-	  if (bundle.hasTime() || bundle.hasDuration()) {
+	  if        (model_duration && bundle.hasDuration())   {
+	    int wraps = (int) ((bundle.ts1() - bundle.ts0())/WEEKS);
+            int x0    = (int) (graph_x_ins + (((bundle.ts0() + 4*DAYS) % period) * graph_w)/period);
+            int x1    = (int) (graph_x_ins + (((bundle.ts1() + 4*DAYS) % period) * graph_w)/period);
+	    return "" + x0 + "," + x1 + "," + wraps;
+	  } else if (bundle.hasTime() || bundle.hasDuration()) {
             return "" + (graph_x_ins + (((bundle.ts0() + 4*DAYS) % period) * graph_w)/period);
 	  } else return null;
 	}
@@ -1519,18 +1538,23 @@ public class RTTimePanel extends RTPanel {
           mapper = new SimpleMapperPix(4);
         } else if (mapper_str.equals(TIMEBIN_CONTINUOUS_8))   {
           mapper = new SimpleMapperPix(8);
-        } else if (mapper_str.equals(PERIOD_MINUTES) ||
-                   mapper_str.equals(PERIOD_HOURS)   ||
-                   mapper_str.equals(PERIOD_DAYS)    ||
-                   mapper_str.equals(PERIOD_WEEKS))           {
-          long periodicity_ms;
-          if      (mapper_str.equals(PERIOD_MINUTES)) periodicity_ms = MINUTES;
-          else if (mapper_str.equals(PERIOD_HOURS))   periodicity_ms = HOURS;
-          else if (mapper_str.equals(PERIOD_DAYS))    periodicity_ms = DAYS;
-          else if (mapper_str.equals(PERIOD_WEEKS))   periodicity_ms = WEEKS;
+        } else if (mapper_str.equals(PERIOD_MINUTES)   ||
+                   mapper_str.equals(PERIOD_HOURS)     ||
+                   mapper_str.equals(PERIOD_DAYS)      ||
+                   mapper_str.equals(PERIOD_WEEKS)     ||
+		   mapper_str.equals(PERIOD_DAYS_DUR)  ||
+		   mapper_str.equals(PERIOD_WEEKS_DUR))       {
+          long periodicity_ms = 0L; boolean model_duration = false;
+          if      (mapper_str.equals(PERIOD_MINUTES))   { periodicity_ms = MINUTES;   }
+          else if (mapper_str.equals(PERIOD_HOURS))     { periodicity_ms = HOURS;     }
+          else if (mapper_str.equals(PERIOD_DAYS))      { periodicity_ms = DAYS;      }
+          else if (mapper_str.equals(PERIOD_WEEKS))     { periodicity_ms = WEEKS;     }
+	  else if (mapper_str.equals(PERIOD_DAYS_DUR))  { periodicity_ms = DAYS;  model_duration = true; }
+	  else if (mapper_str.equals(PERIOD_WEEKS_DUR)) { periodicity_ms = WEEKS; model_duration = true; }
           else throw new RuntimeException("Don't Understand Mapper \"" + mapper_str + "\"");
-          if (mapper_str.equals(PERIOD_WEEKS)) mapper = new WeeklyPeriodicityMapper(periodicity_ms);
-          else                                 mapper = new PeriodicityMapper(periodicity_ms);
+
+          if (mapper_str.equals(PERIOD_WEEKS) || mapper_str.equals(PERIOD_WEEKS_DUR)) mapper = new WeeklyPeriodicityMapper(periodicity_ms, model_duration);
+          else                                                                        mapper = new PeriodicityMapper(periodicity_ms, model_duration);
         } else if (mapper_str.equals(TIMEBIN_MINUTES)  ||
                    mapper_str.equals(TIMEBIN_5MINUTES) ||
                    mapper_str.equals(TIMEBIN_HOURS)    ||
@@ -1565,17 +1589,67 @@ public class RTTimePanel extends RTPanel {
 	    Bundle bundle = it.next();
 	    String str = mapper.map(bundle);
 	    if (str != null) {
-	      if (str.indexOf(",") >= 0) {
+	      //
+	      // Duration version(s)
+	      //
+	      if (str.indexOf(",") >= 0) { // Indicates from - to (i.e., duration representation)
 	        StringTokenizer st = new StringTokenizer(str,",");
-	        int i0 = Integer.parseInt(st.nextToken()), i1 = Integer.parseInt(st.nextToken());
-		if ((i1 - i0 + 1) < 0) System.err.println("RTTimeComponent:  Negative Array Issue W/ String \"" + str + "\""); // DEBUG
-		String strs[] = new String[i1 - i0 + 1];
-	        for (int i=i0,j=0;i<=i1;i++,j++) {
-                  if (tablet_can_count) counter_context.count(bundle,""+i,(double) (i1 - i0 + 1));
-                  strs[j] = ""+i;
-                }
-                bundle_to_bins.put(bundle,strs);
-	      } else                     {
+
+		//
+		// Linear duration version
+		//
+		if (st.countTokens() == 2) {
+	          int i0 = Integer.parseInt(st.nextToken()), i1 = Integer.parseInt(st.nextToken()); 
+		  if ((i1 - i0 + 1) < 0) System.err.println("RTTimeComponent:  Negative Array Issue W/ String \"" + str + "\""); // DEBUG
+		  String strs[] = new String[i1 - i0 + 1];
+	          for (int i=i0,j=0;i<=i1;i++,j++) {
+                    if (tablet_can_count) counter_context.count(bundle,""+i,(double) (i1 - i0 + 1));
+                    strs[j] = ""+i;
+                  }
+                  bundle_to_bins.put(bundle,strs);
+
+                //
+		// Non-linear duration version
+		//
+                } else {
+	          int i0 = Integer.parseInt(st.nextToken()), i1 = Integer.parseInt(st.nextToken()), wraps = Integer.parseInt(st.nextToken());
+		  int top_pixels;
+		  if   (i1 >= i0) top_pixels = i1 - i0 + 1;
+		  else            top_pixels = (i1 - graph_x_ins + 1) + (graph_x_ins + graph_w - i0);
+                  if (wraps > 0) { 
+		    String strs[] = new String[graph_w]; for (int i=0;i<strs.length;i++) strs[i] = "" + (graph_x_ins + i); 
+		    bundle_to_bins.put(bundle,strs);
+		    int wrap_single_column_add = wraps * graph_w + top_pixels;
+		    for (int x=graph_x_ins;x<graph_x_ins+graph_w;x++) {
+		      if (tablet_can_count) {
+		        if      (i1 >= i0 && (x >= i0 && x <= i1)) counter_context.count(bundle,""+x,(double) (wrap_single_column_add+1));
+			else if (i1 <  i0 && (x <= i1 || x >= i0)) counter_context.count(bundle,""+x,(double) (wrap_single_column_add+1));
+			else                                       counter_context.count(bundle,""+x,(double) (wrap_single_column_add));
+		      }
+		    }
+		  } else {
+		    String strs[] = new String[top_pixels];
+		    if (i1 >= i0) {
+		      for (int x=i0,i=0;x<=i1;x++,i++) { 
+		        strs[i] = "" + x; if (tablet_can_count) counter_context.count(bundle,""+x,(double) top_pixels);
+		      }
+		    } else        {
+		      int i = 0;
+		      for (int x=graph_x_ins;x<=i1;x++) {
+		        strs[i++] = ""+x; if (tablet_can_count) counter_context.count(bundle,""+x,(double) top_pixels);
+		      }
+		      for (int x=i0;x<graph_x_ins+graph_w;x++) {
+		        strs[i++] = ""+x; if (tablet_can_count) counter_context.count(bundle,""+x,(double) top_pixels);
+		      }
+		    }
+		    bundle_to_bins.put(bundle,strs);
+		  }
+		}
+
+	      //
+	      // Non-duration version
+	      //
+	      } else                     { // Non-duration based mapping
 	        if (tablet_can_count) counter_context.count(bundle,str); 
 		String strs[] = new String[1]; strs[0] = str; bundle_to_bins.put(bundle,strs);
 	      }

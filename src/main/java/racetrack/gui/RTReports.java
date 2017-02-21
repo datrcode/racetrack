@@ -1560,8 +1560,11 @@ public class RTReports extends RTPanel {
         // Go through the application-level reports
         Iterator<RTComment> it = getRTParent().commentsIterator(); Set<RTComment> in_map = new HashSet<RTComment>(); in_map.addAll(wxy.keySet());
 	while (it.hasNext()) {
+          // Get the application level report... make note that it's removed from the in_map
           RTComment comment = it.next(); in_map.remove(comment);
+          // If the world coordinate doesn't contain the comment, add it to a random location
 	  if (wxy.containsKey(comment) == false) wxy.put(comment, new Point2D.Double(Math.random(), Math.random()));
+          // Convert to screen coords and store those
 	  int sx = wxToSx(wxy.get(comment).getX()), sy = wyToSy(wxy.get(comment).getY());
           sxy_map.put(comment, new Point2D.Double(sx,sy));
 	}
@@ -1650,7 +1653,6 @@ public class RTReports extends RTPanel {
 	      Point2D   sxy     = sxy_map.get(comment);
 	      if (sxy != null) {
 	        int sx = (int) sxy.getX(), sy = (int) sxy.getY();
-		if (sx > -10 && sy > -10 && sx < rc_w+10 && sy < rc_w+10) {
 		  Shape shape = null; Color color = Color.lightGray;
 		  if (suggested_shape_map.containsKey(comment)) { 
                     Utils.Symbol symbol = Utils.parseSymbol(suggested_shape_map.get(comment));
@@ -1700,7 +1702,6 @@ public class RTReports extends RTPanel {
 		    g2d.drawString(to_draw.get(i), sx - Utils.txtW(g2d,to_draw.get(i))/2, sy);
 		    sy += txt_h;
 		  }
-		}
 	      }
 	    }
 	  } finally { g2d.dispose(); }

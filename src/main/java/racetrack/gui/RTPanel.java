@@ -1686,7 +1686,8 @@ class RTPanelFrame extends JFrame implements WindowListener {
       STACKHISTO, GEOHISTO, 
       XY, XYsBs, XYsBsBs, XYtTb, XYtTbTb, XY1x4, XY2x2, 
       PIVOT, TIME_HISTO, LINKNODE_TIME, LINKNODE_TIME_HISTO, 
-      XYENTITY, BOXPLOT, BOXPLOTx2, PARALLEL_COORDINATES, VENN, EVENT_HORIZON, DAY_MATRIX, RUGPLOT, GPS, MDS, EDGE_TIMES, CORRELATE, TABLE, TABLEC,
+      XYENTITY, BOXPLOT, BOXPLOTx2, PARALLEL_COORDINATES, VENN, EVENT_HORIZON, DAY_MATRIX, RUGPLOT, GPS, MDS, EDGE_TIMES, CORRELATE, TABLE, TABLEC, TIMESERIES,
+      DISTRIBUTION,
       REPORTS };
     /**
      * Convert a Type to a string representation.
@@ -1904,6 +1905,10 @@ class RTPanelFrame extends JFrame implements WindowListener {
         case GEOHISTO:   setTitle("Geospatial Histogram"); win_w = 600; win_h = 400;
 	                 getContentPane().add("Center", panel = new RTGeoHistoPanel(type,0,uniq,rt));     rt.addRTPanel(panel); panels.add(panel);
 	                 break;
+        case DISTRIBUTION: 
+                         setTitle("Distribution"); win_w = 600; win_h = 400;
+	                 getContentPane().add("Center", panel = new RTDistributionPanel(type,0,uniq,rt)); rt.addRTPanel(panel); panels.add(panel);
+	                 break;
         case PARALLEL_COORDINATES:  
 	                 setTitle("Parallel Coordinates");
 	                 getContentPane().add("Center", panel = new RTParCoPanel(type,0,uniq,rt));        rt.addRTPanel(panel); panels.add(panel);
@@ -1929,6 +1934,9 @@ class RTPanelFrame extends JFrame implements WindowListener {
         case EVENT_HORIZON: setTitle("Event Horizon"); win_w = 512; win_h = 512;
 	                 getContentPane().add("Center", panel = new RTEventHorizonPanel(type,0,uniq,rt)); rt.addRTPanel(panel); panels.add(panel);
 			 break;
+        case TIMESERIES: setTitle("Time Series"); win_w = 768; win_h = 256;
+                         getContentPane().add("Center", panel = new RTTimeSeriesPanel(type,0,uniq,rt));   rt.addRTPanel(panel); panels.add(panel);
+                         break;
 	case XY:         setTitle("XY");
 	                 getContentPane().add("Center", panel = new RTXYPanel(type,0,uniq,rt)); rt.addRTPanel(panel); panels.add(panel);
                          break;

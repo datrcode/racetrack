@@ -731,12 +731,15 @@ public class RTBoxPlotPanel extends RTPanel {
         boolean                             y_is_categorical = false;
 	boolean                             aggregate_mode   = false;
         KeyMaker                            time_framer_km   = null;
+
+        // Determine the type (numerical/nominal versus categorical) of data
+        if      (y_axis.equals(KeyMaker.RECORD_COUNT_STR))     y_is_categorical = false;
+        else if (globals.isScalar(globals.fieldIndex(y_axis))) y_is_categorical = false;
+        else                                                   y_is_categorical = true;
+
+        // Special consideration for boxplots (because they have to have a specific flavor of data)
         if (mode.startsWith(MODE_BOXPLOT_STR) && !mode.equals(MODE_BOXPLOT_STR)) {
-	  // Determine the type (numerical/nominal versus categorical) of data
 	  aggregate_mode = true;
-          if      (y_axis.equals(KeyMaker.RECORD_COUNT_STR))     y_is_categorical = false;
-	  else if (globals.isScalar(globals.fieldIndex(y_axis))) y_is_categorical = false;
-	  else                                                   y_is_categorical = true;
           // Allocate the right counter
           if (y_is_categorical) time_framer_cat = new HashMap<String,Map<String,Set<String>>>();
 	  else                  time_framer_sum = new HashMap<String,Map<String,Long>>();
@@ -781,7 +784,13 @@ public class RTBoxPlotPanel extends RTPanel {
               String strs[] = ekm.stringKeys(bundle); int strs_i[] = null; if (ekm.isTimeBased() == false) strs_i  = ekm.intKeys(bundle);
 
 	      // Create the y-axis values
-	      int ys[]; String ystrs[] = null; if (bundle_y_counting) { ys = new int[1]; ys[0] = 1; } else { ys = ykm.intKeys(bundle); ystrs = ykm.stringKeys(bundle); }
+	      int ys[] = null; String ystrs[] = null; 
+              if (bundle_y_counting) { 
+                ys = new int[1]; ys[0] = 1; 
+              } else                 { 
+                if (y_is_categorical) { } else { ys = ykm.intKeys(bundle);  }
+                ystrs = ykm.stringKeys(bundle); 
+              }
 
 	      // Determine if a secondary axis is in effect
               String strs2[]; int strs2_i[];

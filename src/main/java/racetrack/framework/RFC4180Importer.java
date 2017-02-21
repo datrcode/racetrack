@@ -42,6 +42,11 @@ public class RFC4180Importer implements CSVTokenConsumer {
   boolean file_has_header;
 
   /**
+   * Bundles that were added during this import operation
+   */
+  Set<Bundle> added_set = new HashSet<Bundle>();
+
+  /**
    * Labels for the fields within the file
    */
   String  labels[];
@@ -226,6 +231,7 @@ public class RFC4180Importer implements CSVTokenConsumer {
               if      (timestamp_i != -1 && timestamp_end_i != -1) bundle = tablet.addBundle(attr,timestamp,timestamp_end);
 	      else if (timestamp_i != -1)                          bundle = tablet.addBundle(attr,timestamp);
 	      else                                                 bundle = tablet.addBundle(attr);
+              added_set.add(bundle);
             } catch (Throwable t) { System.err.println("Error Adding Bundle With Following Characteristics\n" + attr); }
 	    if (bundle == null) {
 	      System.err.println("Tablet Bundle Add Unsuccessful @ Line " + line_no);
@@ -243,5 +249,12 @@ public class RFC4180Importer implements CSVTokenConsumer {
    *@param line
    */
   public void    commentLine(String line) { }
+
+  /**
+   * Return the bundles that were added during this import operation.
+   *
+   *@return set of bundles that were added
+   */
+  public Set<Bundle> getBundlesAdded() { return added_set; }
 }
 

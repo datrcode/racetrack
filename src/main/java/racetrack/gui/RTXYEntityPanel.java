@@ -468,7 +468,7 @@ public class RTXYEntityPanel extends RTPanel {
     cb.removeAllItems();
     strs = KeyMaker.scalarBlanks(getRTParent().getRootBundles().getGlobals());
     for (int i=0;i<strs.length;i++) cb.addItem(strs[i]);
-    if (sel == null) cb.setSelectedIndex(0); else cb.setSelectedItem(cb);
+    if (sel == null) cb.setSelectedIndex(0); else cb.setSelectedItem(sel);
   }
 
   /**

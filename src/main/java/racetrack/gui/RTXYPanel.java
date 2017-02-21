@@ -331,16 +331,17 @@ public class RTXYPanel extends RTPanel {
    *@param master master control panel
    */
   public void linkGeneric(RTXYPanel master) {
-    width_vary_rbmi         = master.width_vary_rbmi;
-    width_vary_log_rbmi     = master.width_vary_log_rbmi;
-    width_small_rbmi        = master.width_small_rbmi;
-    width_medium_rbmi       = master.width_medium_rbmi;
-    width_large_rbmi        = master.width_large_rbmi;
-    color_cbmi              = master.color_cbmi;
-    closest_points_cbmi     = master.closest_points_cbmi;
-    duration_cbmi           = master.duration_cbmi;
-    timemarkers_cbmi        = master.timemarkers_cbmi;
-    stacked_histograms_cbmi = master.stacked_histograms_cbmi;
+    width_vary_rbmi          = master.width_vary_rbmi;
+    width_vary_log_rbmi      = master.width_vary_log_rbmi;
+    width_small_rbmi         = master.width_small_rbmi;
+    width_medium_rbmi        = master.width_medium_rbmi;
+    width_large_rbmi         = master.width_large_rbmi;
+    color_cbmi               = master.color_cbmi;
+    closest_points_cbmi      = master.closest_points_cbmi;
+    duration_cbmi            = master.duration_cbmi;
+    timemarkers_cbmi         = master.timemarkers_cbmi;
+    stacked_histograms_cbmi  = master.stacked_histograms_cbmi;
+    rectangle_selection_rbmi = master.rectangle_selection_rbmi;
 
     defaultListener(width_vary_rbmi);
     defaultListener(width_vary_log_rbmi);

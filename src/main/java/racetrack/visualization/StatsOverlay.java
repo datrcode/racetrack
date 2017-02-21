@@ -1,6 +1,6 @@
 /* 
 
-Copyright 2015 David Trimm
+Copyright 2016 David Trimm
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1061,17 +1061,17 @@ public class StatsOverlay {
    * Helper strings for the flavor maps - provides a single place to update the aliases... should
    * probably be in a resource section somewhere...  The first string is the canonical name - the rest are aliases.
    */
-  static String[]   sip_strs     = { sip,   "srcip", "src_ip",   "SrcIP"                                              },
-		    dip_strs     = { dip,   "dstip", "dst_ip",   "DstIP"                                              },
+  static String[]   sip_strs     = { sip,   "srcip", "src_ip",   "SrcIP", "id.orig_h"                                 },
+		    dip_strs     = { dip,   "dstip", "dst_ip",   "DstIP", "id.resp_h"                                 },
                     pro_strs     = { pro,   "proto", "protocol", "Protocol","Proto"                                   },
-                    spt_strs     = { spt,   "srcpt", "src_pt",   "srcport", "src_port", "SrcPort", "sport", "SrcPt", "Sport", "SPort" },
-		    dpt_strs     = { dpt,   "dstpt", "dst_pt",   "dstport", "dst_port", "DstPort", "dport", "DstPt", "Dport", "DPort" },
+                    spt_strs     = { spt,   "srcpt", "src_pt",   "srcport", "src_port", "SrcPort", "sport", "SrcPt", "Sport", "SPort", "id.orig_p" },
+		    dpt_strs     = { dpt,   "dstpt", "dst_pt",   "dstport", "dst_port", "DstPort", "dport", "DstPt", "Dport", "DPort", "id.resp_p" },
                     oct_strs     = { OCTS,  "OCT",   "BYTES",    "BYTS",    "OCTETS",   "OCTET",   "BYT", "BYTE"      },
                     pkt_strs     = { PKTS,  "PKT",   "PACKETS",  "PACKET"                                             },
-                    soct_strs    = { SOCTS, "SOCT",  "SBYTES",   "SBYT",    "SBYTE"                                   }, 
-                    spkt_strs    = { SPKTS, "SPKT",  "SPACKETS"                                                       },
-                    doct_strs    = { DOCTS, "DOCT",  "DBYTES",   "DBYT",    "DBYTE"                                   }, 
-                    dpkt_strs    = { DPKTS, "DPKT",  "DPACKETS"                                                       };
+                    soct_strs    = { SOCTS, "SOCT",  "SBYTES",   "SBYT",    "SBYTE", "ORIG_IP_BYTES"                  }, 
+                    spkt_strs    = { SPKTS, "SPKT",  "SPACKETS", "ORIG_PKTS"                                          },
+                    doct_strs    = { DOCTS, "DOCT",  "DBYTES",   "DBYT",    "DBYTE", "RESP_IP_BYTES"                  }, 
+                    dpkt_strs    = { DPKTS, "DPKT",  "DPACKETS", "RESP_PKTS"                                          };
 
   /**
    * Flavor string names

@@ -350,7 +350,7 @@ public class BundlesCounterContext {
     Map<String,Map<String,Double>> bin_to_cbin_to_total   = new HashMap<String,Map<String,Double>>();
     Map<String,Double>             cbin_to_total          = new HashMap<String,Double>();
     Map<String,Double>             total_color_maximum_lu = new HashMap<String,Double>();
-    double                         total_maximum          = 0.0, 
+    double                         total_maximum          = 1.0, 
                                    total_color_maximum    = 0.0;
     int                            fldi                   = -1;
 
